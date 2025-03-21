@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 18px;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Добавленные стили для таблицы препаратов */
+.prep-container {
+  min-height: 1.5rem;
+  line-height: 1.05;
+}
+
+.prep-container ul {
+  padding-left: 1rem;
+  margin: 0;
+}
+
+.prep-container li {
+  position: relative;
+  margin-bottom: 0.08rem;
+  list-style-type: none;
+}
+
+.prep-container li::before {
+  content: "•";
+  position: absolute;
+  left: -1rem;
+  color: #4b5563;
+}
+
+.prep-container li:last-child {
+  margin-bottom: 0;
+}
+
+/* Стили для числовых маркеров */
+.prep-container li .font-semibold + * {
+  margin-left: 0.25rem;
+}
+
+/* Стили для таблицы */
+.table-container {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+thead th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
+
+/* Улучшения для мобильного отображения */
+@media (max-width: 640px) {
+  .prep-container {
+    font-size: 0.875rem;
+  }
+  
+  table thead th {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  table tbody td {
+    padding: 0.5rem 0.25rem;
+  }
+}
+
+/* Анимации для улучшения UX */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Улучшенные стили для кнопок действий */
+.action-button {
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
