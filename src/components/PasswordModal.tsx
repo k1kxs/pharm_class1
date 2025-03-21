@@ -1,14 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './ui/Modal';
-import { Key, ShieldAlert } from 'lucide-react';
-import { useAuth } from './context/AuthProvider';
-
-interface PasswordModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPasswordSubmit: (success: boolean) => void;
-  error: string | null;
-}
+import { Lock, X, Eye, EyeOff, LogIn } from 'lucide-react';
+import { PasswordModalProps } from './types';
 
 const PasswordModal: React.FC<PasswordModalProps> = ({
   isOpen,
@@ -16,112 +9,91 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   onPasswordSubmit,
   error
 }) => {
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   
-  const { login } = useAuth();
+  // Очищаем ввод при закрытии/открытии
+  useEffect(() => {
+    if (isOpen) {
+      setPassword('');
+      setShowPassword(false);
+    }
+  }, [isOpen]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!username.trim() || !password.trim()) {
-      setLocalError('Имя пользователя и пароль обязательны');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
     try {
-      const result = await login(username, password);
-      
-      if (result.success) {
-        setUsername('');
-        setPassword('');
-        setLocalError(null);
-        onPasswordSubmit(true);
-      } else {
-        setLocalError(result.message);
-        onPasswordSubmit(false);
-      }
+      await onPasswordSubmit(password);
     } catch (error) {
-      setLocalError('Ошибка при входе. Попробуйте позже.');
-      onPasswordSubmit(false);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Ошибка при отправке пароля:', error);
     }
   };
-
+  
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Вход в режим редактирования">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex items-center justify-center mb-4">
-          <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-            <Key size={28} className="text-blue-600" />
+      <div className="p-2">
+        <div className="flex justify-center mb-6">
+          <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
+            <Lock size={26} />
           </div>
         </div>
         
-        <p className="text-center text-gray-700 mb-4">
-          Для редактирования классификации необходимо войти в систему
+        <p className="text-gray-600 text-center mb-4 max-w-xs mx-auto">
+          Для редактирования классификации лекарственных средств введите пароль администратора
         </p>
         
-        <div className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Имя пользователя
-            </label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-              required
-              autoComplete="username"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`w-full px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 shadow-sm ${
+                  error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+                placeholder="Введите пароль"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={toggleShowPassword}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            
+            {error && (
+              <div className="text-red-500 text-sm mt-2 flex items-center">
+                <X size={14} className="mr-1 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
           </div>
           
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Пароль
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-              required
-              autoComplete="current-password"
-              aria-invalid={error || localError ? "true" : "false"}
-            />
+          <div className="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 shadow-sm flex items-center"
+            >
+              <LogIn size={16} className="mr-1.5" />
+              Войти
+            </button>
           </div>
-        </div>
-        
-        {(error || localError) && (
-          <div className="text-red-600 text-sm p-2 bg-red-50 rounded" role="alert">
-            {error || localError}
-          </div>
-        )}
-        
-        <div className="flex justify-end space-x-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            Отмена
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Вход...' : 'Войти'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </Modal>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash, Plus, CornerDownRight } from 'lucide-react';
 import { Subgroup, Category } from './types';
 import CategoryComponent from './CategoryComponent';
 
@@ -33,51 +33,61 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
 
   return (
-    <div className="border border-gray-100 rounded bg-white">
-      <div className="p-2 flex justify-between items-center hover:bg-gray-50">
-        <div className="flex-1">
+    <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow">
+      <div className="p-3 flex justify-between items-center rounded-lg hover:bg-gray-50 transition-colors duration-200">
+        <div className="flex-1 flex items-center">
+          <CornerDownRight size={16} className="text-gray-400 mr-2" />
+          
           {isEditingTitle === subgroup.id ? (
-            <div className="flex items-center">
+            <div className="flex items-center w-full max-w-md">
               <input
                 type="text"
                 value={editingTitleValue}
                 onChange={(e) => onEditingTitleChange(e.target.value)}
-                className="border rounded px-2 py-1 mr-2 w-full"
+                className="border rounded-md px-3 py-1.5 mr-2 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none shadow-sm"
                 autoFocus
               />
               <button
                 onClick={() => onFinishEditingTitle('subgroup', subgroup.id)}
-                className="p-1 bg-blue-100 rounded text-blue-800"
+                className="p-1.5 bg-blue-100 rounded-md text-blue-700 hover:bg-blue-200 transition-all duration-200"
               >
                 <Edit size={16} />
               </button>
             </div>
           ) : (
-            <h4 
-              className="text-md font-medium flex items-center cursor-pointer"
+            <div 
+              className="group flex items-center cursor-pointer flex-1"
               onClick={() => setIsSubgroupExpanded(!isSubgroupExpanded)}
             >
-              {isSubgroupExpanded ? <ChevronDown size={16} className="mr-1" /> : <ChevronRight size={16} className="mr-1" />}
-              {subgroup.name}
-              {isEditorMode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartEditingTitle('subgroup', subgroup);
-                  }}
-                  className="ml-2 p-1 bg-gray-100 rounded hover:bg-gray-200"
-                >
-                  <Edit size={12} />
-                </button>
-              )}
-            </h4>
+              <div className="flex items-center transition-transform duration-200">
+                {isSubgroupExpanded ? 
+                  <ChevronDown size={18} className="mr-2 text-indigo-500" /> : 
+                  <ChevronRight size={18} className="mr-2 text-indigo-500 transition-transform duration-200 group-hover:translate-x-1" />
+                }
+              </div>
+              
+              <h4 className="text-base font-medium flex items-center text-gray-700">
+                {subgroup.name}
+                {isEditorMode && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartEditingTitle('subgroup', subgroup);
+                    }}
+                    className="ml-2 p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  >
+                    <Edit size={12} className="text-gray-600" />
+                  </button>
+                )}
+              </h4>
+            </div>
           )}
         </div>
         {isEditorMode && (
           <div className="flex items-center space-x-2">
             <button
               onClick={() => onDeleteItem('subgroup', subgroup.id)}
-              className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors duration-200"
+              className="p-1.5 bg-gray-100 rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200"
               title="Удалить подгруппу"
             >
               <Trash size={14} />
@@ -87,21 +97,21 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
       </div>
       
       {isSubgroupExpanded && (
-        <div className="p-2 pl-4 bg-gray-50">
+        <div className="p-3 pl-8 bg-gray-50 rounded-b-lg border-t scale-in">
           {isEditorMode && (
             <div className="mb-3 flex justify-end">
               <button
                 onClick={() => onOpenEditor('category', subgroup.id)}
-                className="px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors duration-200 flex items-center text-xs"
+                className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
               >
-                <Plus size={12} className="mr-1" />
-                Добавить категорию
+                <Plus size={12} className="mr-1.5" />
+                <span className="font-medium">Добавить категорию</span>
               </button>
             </div>
           )}
           
           <div className="space-y-3">
-            {subgroup.categories.length > 0 ? (
+            {subgroup.categories && subgroup.categories.length > 0 ? (
               subgroup.categories.map((category: Category) => (
                 <CategoryComponent
                   key={category.id}
@@ -116,11 +126,16 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                   onFinishEditingTitle={onFinishEditingTitle}
                   onEditingTitleChange={onEditingTitleChange}
                   onDeleteItem={onDeleteItem}
+                  onOpenEditor={onOpenEditor}
                 />
               ))
             ) : (
-              <div className="text-center text-gray-500 p-1 text-sm">
-                Нет категорий в этой подгруппе. {isEditorMode && "Добавьте новую категорию с помощью кнопки выше."}
+              <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
+                {isEditorMode ? (
+                  <p>Добавьте категорию с помощью кнопки выше</p>
+                ) : (
+                  <p>В данной подгруппе нет категорий</p>
+                )}
               </div>
             )}
           </div>
@@ -130,4 +145,4 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   );
 };
 
-export default SubgroupComponent; 
+export default SubgroupComponent;

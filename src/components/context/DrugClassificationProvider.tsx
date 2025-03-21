@@ -12,7 +12,7 @@ interface DrugClassificationProviderProps {
 
 export const DrugClassificationProvider: React.FC<DrugClassificationProviderProps> = ({ children }) => {
   // Получаем данные аутентификации
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, login } = useAuth();
   
   // Состояния для хранения данных
   const [cycles, setCycles] = useState<Cycle[]>([]);
@@ -58,7 +58,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
       }
-    };
+    }
     
     fetchData();
   }, []);
@@ -72,7 +72,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
         } catch (error) {
           console.error('Ошибка при сохранении данных:', error);
         }
-      };
+      }
       
       saveData();
     }
@@ -140,22 +140,32 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const openPasswordModal = () => {
     setPasswordModalOpen(true);
     setPasswordError(null);
-  };
+  }
   
   // Закрытие модального окна для ввода пароля
   const closePasswordModal = () => {
     setPasswordModalOpen(false);
-  };
+  }
   
   // Обработчик успешной аутентификации
-  const handlePasswordSubmit = (success: boolean) => {
-    if (success) {
-      setIsEditorMode(true);
-      setPasswordModalOpen(false);
-      setPasswordError(null);
-    } else {
-      // Ошибки теперь обрабатываются внутри PasswordModal
-      // с использованием AuthProvider
+  const handlePasswordSubmit = async (password: string) => {
+    console.log('handlePasswordSubmit вызван с паролем:', password);
+    
+    try {
+      // Используем AuthProvider для входа
+      const result = await login('admin', password);
+      console.log('Результат аутентификации:', result);
+      
+      if (result.success) {
+        setIsEditorMode(true);
+        setPasswordModalOpen(false);
+        setPasswordError(null);
+      } else {
+        setPasswordError(result.message);
+      }
+    } catch (error) {
+      console.error('Ошибка при аутентификации:', error);
+      setPasswordError('Неверный пароль. Попробуйте еще раз.');
     }
   };
   
@@ -164,59 +174,180 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     setIsEditorMode(false);
     // Выход из системы при выходе из режима редактирования
     logout();
-  };
+  }
   
   // Открытие модального окна редактирования
   const openEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => {
+    console.log('openEditModal:', type, parentId);
     setEditType(type);
-    setEditData(null);
     setParentForEdit(parentId || null);
     
-    switch (type) {
-      case 'cycle':
-        setEditTitle('Добавить новый цикл');
-        break;
-      case 'group':
-        setEditTitle('Добавить новую группу');
-        break;
-      case 'subgroup':
-        setEditTitle('Добавить новую подгруппу');
-        break;
-      case 'category':
-        setEditTitle('Добавить новую категорию');
-        break;
+    // Найти существующие данные для редактирования
+    if (parentId) {
+      let itemData = null;
+      
+      switch (type) {
+        case 'cycle':
+          // Для циклов поиск по ID
+          const cycleToEdit = cycles.find(c => c.id === parentId);
+          if (cycleToEdit) {
+            itemData = cycleToEdit;
+            setEditTitle('Редактировать цикл');
+          }
+          break;
+          
+        case 'group':
+          // Ищем группу во всех циклах
+          cycles.forEach(cycle => {
+            // Поиск группы для редактирования
+            const groupToEdit = cycle.groups.find(g => g.id === parentId);
+            if (groupToEdit) {
+              itemData = groupToEdit;
+              setEditTitle('Редактировать группу');
+            }
+          });
+          break;
+          
+        case 'category':
+          // Ищем категорию по ID во всех циклах и подгруппах
+          cycles.forEach(cycle => {
+            cycle.groups.forEach(group => {
+              group.subgroups.forEach(subgroup => {
+                // Поиск категории для редактирования
+                const categoryToEdit = subgroup.categories.find(c => c.id === parentId);
+                if (categoryToEdit) {
+                  itemData = categoryToEdit;
+                  setEditTitle('Редактировать категорию');
+                }
+              });
+            });
+          });
+          break;
+          
+        case 'subgroup':
+          // Ищем подгруппу по ID во всех циклах
+          cycles.forEach(cycle => {
+            cycle.groups.forEach(group => {
+              // Поиск подгруппы для редактирования
+              const subgroupToEdit = group.subgroups.find(s => s.id === parentId);
+              if (subgroupToEdit) {
+                itemData = subgroupToEdit;
+                setEditTitle('Редактировать подгруппу');
+              }
+            });
+          });
+          break;
+      }
+      
+      if (itemData) {
+        console.log('Найдены данные для редактирования:', itemData);
+        setEditData(itemData);
+      } else {
+        // Если не нашли элемент для редактирования, значит добавляем новый
+        console.log('Не найдены данные для редактирования, создаем новый элемент');
+        setEditData(null);
+        switch (type) {
+          case 'cycle':
+            setEditTitle('Добавить новый цикл');
+            break;
+          case 'group':
+            setEditTitle('Добавить новую группу');
+            break;
+          case 'subgroup':
+            setEditTitle('Добавить новую подгруппу');
+            break;
+          case 'category':
+            setEditTitle('Добавить новую категорию');
+            break;
+        }
+      }
+    } else {
+      // Нет ID родителя, значит создаём новый элемент
+      console.log('Создаем новый элемент (без ID родителя)');
+      setEditData(null);
+      switch (type) {
+        case 'cycle':
+          setEditTitle('Добавить новый цикл');
+          break;
+        case 'group':
+          setEditTitle('Добавить новую группу');
+          break;
+        case 'subgroup':
+          setEditTitle('Добавить новую подгруппу');
+          break;
+        case 'category':
+          setEditTitle('Добавить новую категорию');
+          break;
+      }
     }
     
     setEditModalOpen(true);
-  };
+  }
   
   // Закрытие модального окна редактирования
   const closeEditModal = () => {
     setEditModalOpen(false);
-  };
+  }
   
   // Сохранение данных после редактирования
   const handleSaveEdit = (data: any) => {
-    const newItem = {
-      id: Date.now(),
-      ...data
-    };
-    
     let newCycles = [...cycles];
+    
+    // Проверяем, есть ли у данных ID - если есть, обновляем существующий элемент
+    const isUpdate = data.id !== undefined;
+    
+    // Если это новый элемент, генерируем ID
+    const newItem = isUpdate 
+      ? data 
+      : {
+          id: Date.now(),
+          ...data
+        };
+    
+    console.log('handleSaveEdit:', newItem, 'isUpdate:', isUpdate);
     
     switch (editType) {
       case 'cycle':
-        newCycles.push(newItem as Cycle);
+        if (isUpdate) {
+          // Обновляем существующий цикл
+          newCycles = newCycles.map(cycle => 
+            cycle.id === newItem.id 
+              ? { ...cycle, name: newItem.name, gradient: newItem.gradient } 
+              : cycle
+          );
+        } else {
+          // Добавляем новый цикл
+          newCycles.push(newItem as Cycle);
+        }
         break;
         
       case 'group':
-        if (parentForEdit !== null) {
+        if (isUpdate) {
+          // Обновляем существующую группу
+          newCycles = newCycles.map(cycle => {
+            return {
+              ...cycle,
+              groups: cycle.groups.map(group => {
+                if (group.id === newItem.id) {
+                  console.log('Обновляем препараты группы:', newItem.preparations);
+                  return { 
+                    ...group, 
+                    name: newItem.name, 
+                    preparations: newItem.preparations 
+                  };
+                }
+                return group;
+              })
+            };
+          });
+        } else if (parentForEdit !== null) {
+          // Добавляем новую группу
           newCycles = newCycles.map(cycle => {
             if (cycle.id === parentForEdit) {
               return {
                 ...cycle,
                 groups: [...cycle.groups, newItem as Group]
-              };
+              }
             }
             return cycle;
           });
@@ -224,7 +355,25 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
         break;
         
       case 'subgroup':
-        if (parentForEdit !== null) {
+        if (isUpdate) {
+          // Обновляем существующую подгруппу
+          newCycles = newCycles.map(cycle => {
+            return {
+              ...cycle,
+              groups: cycle.groups.map(group => {
+                return {
+                  ...group,
+                  subgroups: group.subgroups.map(subgroup => 
+                    subgroup.id === newItem.id 
+                      ? { ...subgroup, name: newItem.name } 
+                      : subgroup
+                  )
+                };
+              })
+            };
+          });
+        } else if (parentForEdit !== null) {
+          // Добавляем новую подгруппу
           newCycles = newCycles.map(cycle => {
             return {
               ...cycle,
@@ -233,17 +382,46 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                   return {
                     ...group,
                     subgroups: [...group.subgroups, newItem as Subgroup]
-                  };
+                  }
                 }
                 return group;
               })
-            };
+            }
           });
         }
         break;
         
       case 'category':
-        if (parentForEdit !== null) {
+        if (isUpdate) {
+          // Обновляем существующую категорию
+          newCycles = newCycles.map(cycle => {
+            return {
+              ...cycle,
+              groups: cycle.groups.map(group => {
+                return {
+                  ...group,
+                  subgroups: group.subgroups.map(subgroup => {
+                    return {
+                      ...subgroup,
+                      categories: subgroup.categories.map(category => {
+                        if (category.id === newItem.id) {
+                          console.log('Обновляем препараты категории:', newItem.preparations);
+                          return { 
+                            ...category, 
+                            name: newItem.name, 
+                            preparations: newItem.preparations 
+                          };
+                        }
+                        return category;
+                      })
+                    };
+                  })
+                };
+              })
+            };
+          });
+        } else if (parentForEdit !== null) {
+          // Добавляем новую категорию
           newCycles = newCycles.map(cycle => {
             return {
               ...cycle,
@@ -255,47 +433,47 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                       return {
                         ...subgroup,
                         categories: [...subgroup.categories, newItem as Category]
-                      };
+                      }
                     }
                     return subgroup;
                   })
-                };
+                }
               })
-            };
+            }
           });
         }
         break;
     }
     
     setCycles(newCycles);
-  };
+  }
   
   // Открытие модального окна экспорта
   const openExportModal = () => {
     setExportModalOpen(true);
-  };
+  }
   
   // Закрытие модального окна экспорта
   const closeExportModal = () => {
     setExportModalOpen(false);
-  };
+  }
   
   // Обработчик экспорта в PDF
   const handleExport = (cycleIds: number[]) => {
     const pdfGenerator = new PDFGenerator(cycles, cycleIds);
     pdfGenerator.generatePDF();
-  };
+  }
   
   // Открытие палитры цветов
   const openColorPicker = (cycleId: number) => {
     setSelectedCycleId(cycleId);
     setColorPickerOpen(true);
-  };
+  }
   
   // Закрытие палитры цветов
   const closeColorPicker = () => {
     setColorPickerOpen(false);
-  };
+  }
   
   // Обработчик изменения градиента цикла
   const handleColorSelect = (gradient: string) => {
@@ -303,13 +481,13 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     
     const newCycles = cycles.map(cycle => {
       if (cycle.id === selectedCycleId) {
-        return { ...cycle, gradient };
+        return { ...cycle, gradient }
       }
       return cycle;
     });
     
     setCycles(newCycles);
-  };
+  }
   
   // Обработчик переключения состояния цикла (свернуть/развернуть)
   const toggleCycle = (cycleId: number) => {
@@ -320,13 +498,13 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
         return [...prev, cycleId];
       }
     });
-  };
+  }
   
   // Обработчики для редактирования заголовков
   const startEditingTitle = (type: string, item: any) => {
     setIsEditingTitle(item.id);
     setEditingTitleValue(item.name);
-  };
+  }
   
   const finishEditingTitle = (type: string, id: number) => {
     if (!editingTitleValue.trim()) {
@@ -340,7 +518,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
       case 'cycle':
         newCycles = newCycles.map(cycle => {
           if (cycle.id === id) {
-            return { ...cycle, name: editingTitleValue };
+            return { ...cycle, name: editingTitleValue }
           }
           return cycle;
         });
@@ -352,11 +530,11 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             ...cycle,
             groups: cycle.groups.map(group => {
               if (group.id === id) {
-                return { ...group, name: editingTitleValue };
+                return { ...group, name: editingTitleValue }
               }
               return group;
             })
-          };
+          }
         });
         break;
         
@@ -369,13 +547,13 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                 ...group,
                 subgroups: group.subgroups.map(subgroup => {
                   if (subgroup.id === id) {
-                    return { ...subgroup, name: editingTitleValue };
+                    return { ...subgroup, name: editingTitleValue }
                   }
                   return subgroup;
                 })
-              };
+              }
             })
-          };
+          }
         });
         break;
         
@@ -391,22 +569,22 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                     ...subgroup,
                     categories: subgroup.categories.map(category => {
                       if (category.id === id) {
-                        return { ...category, name: editingTitleValue };
+                        return { ...category, name: editingTitleValue }
                       }
                       return category;
                     })
-                  };
+                  }
                 })
-              };
+              }
             })
-          };
+          }
         });
         break;
     }
     
     setCycles(newCycles);
     setIsEditingTitle(null);
-  };
+  }
   
   // Обработчик удаления элементов
   const handleDelete = (type: string, id: number) => {
@@ -426,7 +604,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
           return {
             ...cycle,
             groups: cycle.groups.filter(group => group.id !== id)
-          };
+          }
         });
         break;
         
@@ -438,9 +616,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
               return {
                 ...group,
                 subgroups: group.subgroups.filter(subgroup => subgroup.id !== id)
-              };
+              }
             })
-          };
+          }
         });
         break;
         
@@ -455,22 +633,22 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                   return {
                     ...subgroup,
                     categories: subgroup.categories.filter(category => category.id !== id)
-                  };
+                  }
                 })
-              };
+              }
             })
-          };
+          }
         });
         break;
     }
     
     setCycles(newCycles);
-  };
+  }
   
   // Обработчики для drag-and-drop циклов
   const handleCycleDragStart = (e: React.DragEvent, cycle: Cycle) => {
     setDraggedCycle(cycle);
-  };
+  }
   
   const handleCycleDragOver = (e: React.DragEvent, cycle: Cycle) => {
     e.preventDefault();
@@ -478,7 +656,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     if (draggedCycle && draggedCycle.id !== cycle.id) {
       setDragOverCycle(cycle);
     }
-  };
+  }
   
   const handleCycleDrop = (e: React.DragEvent, targetCycle: Cycle) => {
     e.preventDefault();
@@ -497,17 +675,17 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     
     setDraggedCycle(null);
     setDragOverCycle(null);
-  };
+  }
   
   const handleCycleDragEnd = () => {
     setDraggedCycle(null);
     setDragOverCycle(null);
-  };
+  }
   
   // Обработчики для drag-and-drop групп
   const handleGroupDragStart = (e: React.DragEvent, group: Group, cycleId: number) => {
     setDraggedGroup({ ...group, cycleId });
-  };
+  }
   
   const handleGroupDragOver = (e: React.DragEvent, group: Group, cycleId: number) => {
     e.preventDefault();
@@ -515,7 +693,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     if (draggedGroup && (draggedGroup.id !== group.id || draggedGroup.cycleId !== cycleId)) {
       setDragOverGroup({ ...group, cycleId });
     }
-  };
+  }
   
   const handleGroupDrop = (e: React.DragEvent, targetGroup: Group, targetCycleId: number) => {
     e.preventDefault();
@@ -559,12 +737,23 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     
     setDraggedGroup(null);
     setDragOverGroup(null);
-  };
+  }
   
   const handleGroupDragEnd = () => {
     setDraggedGroup(null);
     setDragOverGroup(null);
-  };
+  }
+  
+  // Функция для проверки сессии перед выполнением защищенных действий
+  const checkSessionBeforeAction = (action: () => void) => {
+    if (!isAuthenticated && isEditorMode) {
+      setIsEditorMode(false);
+      setPasswordError('Время сессии истекло. Пожалуйста, войдите снова.');
+      openPasswordModal();
+    } else {
+      action();
+    }
+  }
   
   // Обновляем функции, требующие проверки сессии
   const secureOpenEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => {
@@ -575,7 +764,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     } else {
       openEditModal(type, parentId);
     }
-  };
+  }
 
   const secureHandleSaveEdit = (data: any) => {
     if (!isAuthenticated && isEditorMode) {
@@ -585,21 +774,22 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     } else {
       handleSaveEdit(data);
     }
-  };
+  }
 
   const secureHandleDelete = (type: string, id: number) => {
     if (!isAuthenticated && isEditorMode) {
       setIsEditorMode(false);
+    }
     checkSessionBeforeAction(() => handleDelete(type, id));
-  };
+  }
 
   const secureStartEditingTitle = (type: string, item: any) => {
     checkSessionBeforeAction(() => startEditingTitle(type, item));
-  };
+  }
 
   const secureFinishEditingTitle = (type: string, id: number) => {
     checkSessionBeforeAction(() => finishEditingTitle(type, id));
-  };
+  }
   
   // Создаем значение контекста, объединяя состояние и действия
   const contextValue: DrugClassificationContextType = {
@@ -635,6 +825,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     closePasswordModal,
     handlePasswordSubmit,
     exitEditorMode,
+    setIsEditorMode,
+    setPasswordModalOpen,
+    setPasswordError,
     openEditModal: secureOpenEditModal,
     closeEditModal,
     handleSaveEdit: secureHandleSaveEdit,
@@ -657,7 +850,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     handleGroupDragOver,
     handleGroupDrop,
     handleGroupDragEnd,
-  };
+  }
   
   return (
     <DrugClassificationContext.Provider value={contextValue}>

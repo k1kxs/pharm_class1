@@ -81,3 +81,7 @@ temp/
 # Next.js
 .next/
 out/
+
+# Server
+/server/node_modules
+/server/.env

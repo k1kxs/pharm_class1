@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './ui/Modal';
 import { EditModalProps } from './types';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { X, Save, Palette } from 'lucide-react';
 
 const EditModal: React.FC<EditModalProps> = ({
   isOpen,
@@ -14,6 +17,25 @@ const EditModal: React.FC<EditModalProps> = ({
   const [name, setName] = useState('');
   const [preparations, setPreparations] = useState('');
   const [gradient, setGradient] = useState('from-blue-500 via-indigo-500 to-violet-600');
+
+  // Конфигурация Quill редактора
+  const modules = {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['link']
+    ],
+    clipboard: {
+      // Разрешаем вставку всего HTML
+      matchVisual: false
+    }
+  };
+
+  const formats = [
+    'bold', 'italic', 'underline',
+    'list', 'bullet', 'indent',
+    'link'
+  ];
 
   // Опции градиентов для циклов
   const gradientOptions = [
@@ -29,9 +51,17 @@ const EditModal: React.FC<EditModalProps> = ({
   ];
 
   useEffect(() => {
+    console.log('EditModal initialData:', initialData);
+    
     if (initialData) {
       setName(initialData.name || '');
-      setPreparations(initialData.preparations || '');
+      
+      // Проверяем наличие препаратов для редактирования
+      if (type === 'group' || type === 'category') {
+        console.log('Загружаем препараты для редактирования:', initialData.preparations);
+        setPreparations(initialData.preparations || '');
+      }
+      
       if (type === 'cycle' && initialData.gradient) {
         setGradient(initialData.gradient);
       }
@@ -59,15 +89,27 @@ const EditModal: React.FC<EditModalProps> = ({
       data.categories = [];
     }
     
+    // Если есть начальные данные, сохраняем ID для обновления
+    if (initialData && initialData.id) {
+      data.id = initialData.id;
+    }
+    
+    console.log('Сохраняем данные:', data);
     onSave(data);
     onClose();
   };
 
+  // При изменении текста препаратов
+  const handlePreparationsChange = (content: string) => {
+    console.log('Текст препаратов изменен:', content);
+    setPreparations(content);
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
             Название
           </label>
           <input
@@ -75,21 +117,22 @@ const EditModal: React.FC<EditModalProps> = ({
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 shadow-sm"
+            placeholder="Введите название..."
             required
           />
         </div>
         
         {type === 'cycle' && (
-          <div>
-            <label htmlFor="gradient" className="block text-sm font-medium text-gray-700 mb-1">
-              Цвет цикла
+          <div className="space-y-2">
+            <label htmlFor="gradient" className="block text-sm font-medium text-gray-700 flex items-center">
+              <Palette size={16} className="mr-1" /> Цвет цикла
             </label>
             <select
               id="gradient"
               value={gradient}
               onChange={(e) => setGradient(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
             >
               {gradientOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -97,40 +140,43 @@ const EditModal: React.FC<EditModalProps> = ({
                 </option>
               ))}
             </select>
-            <div className={`w-full h-6 mt-2 rounded bg-gradient-to-r ${gradient}`} />
+            <div className={`w-full h-8 mt-1 rounded-md bg-gradient-to-r ${gradient} shadow-sm`} />
           </div>
         )}
         
         {(type === 'group' || type === 'category') && (
-          <div>
-            <label htmlFor="preparations" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label htmlFor="preparations" className="block text-sm font-medium text-gray-700">
               Препараты
             </label>
-            <textarea
-              id="preparations"
-              value={preparations}
-              onChange={(e) => setPreparations(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
-            />
+            <div className="quill-container border rounded-md overflow-hidden shadow-sm">
+              <ReactQuill
+                value={preparations}
+                onChange={handlePreparationsChange}
+                modules={modules}
+                formats={formats}
+                placeholder="Введите список препаратов..."
+              />
+            </div>
             <p className="text-xs text-gray-500 mt-1">
-              Для форматирования используйте теги: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;
+              Используйте форматирование для создания структурированного списка препаратов
             </p>
           </div>
         )}
         
-        <div className="flex justify-end space-x-2 pt-2">
+        <div className="flex justify-end space-x-3 pt-4 border-t">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200 shadow-sm flex items-center"
           >
-            Отмена
+            <X size={16} className="mr-1" /> Отмена
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 shadow-sm flex items-center"
           >
-            Сохранить
+            <Save size={16} className="mr-1" /> Сохранить
           </button>
         </div>
       </form>

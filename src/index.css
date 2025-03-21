@@ -4,6 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --secondary-color: #6366f1;
+  --secondary-hover: #4f46e5;
+  --success-color: #10b981;
+  --success-hover: #059669;
+  --danger-color: #ef4444;
+  --danger-hover: #dc2626;
+  --warning-color: #f59e0b;
+  --warning-hover: #d97706;
+  --background-light: #f9fafb;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --border-radius-sm: 0.375rem;
+  --border-radius-md: 0.5rem;
+  --border-radius-lg: 0.75rem;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen',
@@ -11,7 +31,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #1f2937;
+  background-color: var(--background-light);
 }
 
 code {
@@ -19,28 +42,30 @@ code {
     monospace;
 }
 
-/* Добавленные стили для таблицы препаратов */
+/* Улучшенные стили для таблицы препаратов */
 .prep-container {
   min-height: 1.5rem;
-  line-height: 1.05;
+  line-height: 1.2;
+  padding: 0.5rem 0;
 }
 
 .prep-container ul {
-  padding-left: 1rem;
+  padding-left: 1.25rem;
   margin: 0;
 }
 
 .prep-container li {
   position: relative;
-  margin-bottom: 0.08rem;
+  margin-bottom: 0.3rem;
   list-style-type: none;
+  padding-left: 0.5rem;
 }
 
 .prep-container li::before {
   content: "•";
   position: absolute;
-  left: -1rem;
-  color: #4b5563;
+  left: -0.75rem;
+  color: var(--primary-color);
 }
 
 .prep-container li:last-child {
@@ -49,30 +74,63 @@ code {
 
 /* Стили для числовых маркеров */
 .prep-container li .font-semibold + * {
-  margin-left: 0.25rem;
+  margin-left: 0.3rem;
 }
 
-/* Стили для таблицы */
+/* Улучшенные стили для таблицы */
 .table-container {
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+}
+
+.table-container table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 thead th:first-child {
-  border-top-left-radius: 0.5rem;
+  border-top-left-radius: var(--border-radius-md);
 }
 
 thead th:last-child {
-  border-top-right-radius: 0.5rem;
+  border-top-right-radius: var(--border-radius-md);
+}
+
+tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+tbody tr:hover {
+  background-color: rgba(243, 244, 246, 0.7);
+}
+
+tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
 tbody tr:last-child td:first-child {
-  border-bottom-left-radius: 0.5rem;
+  border-bottom-left-radius: var(--border-radius-md);
 }
 
 tbody tr:last-child td:last-child {
-  border-bottom-right-radius: 0.5rem;
+  border-bottom-right-radius: var(--border-radius-md);
 }
 
 /* Улучшения для мобильного отображения */
@@ -82,16 +140,16 @@ tbody tr:last-child td:last-child {
   }
   
   table thead th {
-    padding: 0.5rem 0.25rem;
+    padding: 0.625rem 0.5rem;
     font-size: 0.75rem;
   }
   
   table tbody td {
-    padding: 0.5rem 0.25rem;
+    padding: 0.625rem 0.5rem;
   }
 }
 
-/* Анимации для улучшения UX */
+/* Улучшенные анимации для интерфейса */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -107,18 +165,188 @@ tbody tr:last-child td:last-child {
 }
 
 .slide-down {
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown 0.25s ease-out;
 }
 
-/* Улучшенные стили для кнопок действий */
-.action-button {
-  transition: all 0.2s ease;
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-.action-button:hover {
-  transform: translateY(-2px);
+.scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
 
-.action-button:active {
-  transform: translateY(0);
+/* Улучшенные стили для кнопок */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-success {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: var(--success-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.125rem;
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  border-radius: 9999px;
+}
+
+/* Улучшенные стили для редактора Quill */
+.quill-container .ql-container {
+  font-size: 0.9rem;
+  border-bottom-left-radius: var(--border-radius-sm);
+  border-bottom-right-radius: var(--border-radius-sm);
+  background-color: white;
+  border-color: #e5e7eb;
+}
+
+.quill-container .ql-toolbar {
+  border-top-left-radius: var(--border-radius-sm);
+  border-top-right-radius: var(--border-radius-sm);
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.quill-container .ql-editor {
+  min-height: 150px;
+  padding: 1rem;
+}
+
+.quill-container .ql-editor h1,
+.quill-container .ql-editor h2,
+.quill-container .ql-editor h3,
+.quill-container .ql-editor h4,
+.quill-container .ql-editor h5,
+.quill-container .ql-editor h6 {
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.quill-container .ql-editor p {
+  margin-bottom: 0.5rem;
+}
+
+.quill-container .ql-editor ul,
+.quill-container .ql-editor ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quill-container .ql-editor li {
+  margin-bottom: 0.25rem;
+}
+
+.quill-container .ql-editor a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.quill-container .ql-snow.ql-toolbar button:hover,
+.quill-container .ql-snow .ql-toolbar button:hover,
+.quill-container .ql-snow.ql-toolbar button:focus,
+.quill-container .ql-snow .ql-toolbar button:focus,
+.quill-container .ql-snow.ql-toolbar button.ql-active,
+.quill-container .ql-snow .ql-toolbar button.ql-active {
+  color: #3b82f6;
+}
+
+.quill-container .ql-snow.ql-toolbar button:hover .ql-fill,
+.quill-container .ql-snow .ql-toolbar button:hover .ql-fill,
+.quill-container .ql-snow.ql-toolbar button:focus .ql-fill,
+.quill-container .ql-snow .ql-toolbar button:focus .ql-fill,
+.quill-container .ql-snow.ql-toolbar button.ql-active .ql-fill,
+.quill-container .ql-snow .ql-toolbar button.ql-active .ql-fill {
+  fill: #3b82f6;
+}
+
+.quill-container .ql-snow.ql-toolbar button:hover .ql-stroke,
+.quill-container .ql-snow .ql-toolbar button:hover .ql-stroke,
+.quill-container .ql-snow.ql-toolbar button:focus .ql-stroke,
+.quill-container .ql-snow .ql-toolbar button:focus .ql-stroke,
+.quill-container .ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.quill-container .ql-snow .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #3b82f6;
+}
+
+/* Стили для отображения форматированного текста препаратов */
+.formatted-preparations ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.formatted-preparations ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.formatted-preparations li {
+  margin-bottom: 0.25rem;
+}
+
+.formatted-preparations p {
+  margin-bottom: 0.5rem;
+}
+
+.formatted-preparations strong,
+.formatted-preparations b {
+  font-weight: 600;
+}
+
+.formatted-preparations em,
+.formatted-preparations i {
+  font-style: italic;
+}
+
+.formatted-preparations a {
+  color: #3b82f6;
+  text-decoration: underline;
 }

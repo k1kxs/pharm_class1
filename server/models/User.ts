@@ -11,6 +11,7 @@ export interface IUser extends Document {
   lockUntil: number;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isLocked(): boolean;
+  incrementLoginAttempts(): Promise<void>;
 }
 
 // Схема пользователя

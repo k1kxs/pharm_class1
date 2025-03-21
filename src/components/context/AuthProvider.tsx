@@ -42,6 +42,12 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Для отладки - выводим изменения в состоянии user
+  useEffect(() => {
+    console.log('Состояние user изменилось:', user);
+    console.log('isAuthenticated =', !!user);
+  }, [user]);
+
   // Проверка аутентификации при загрузке компонента
   useEffect(() => {
     const checkAuth = async () => {
@@ -68,7 +74,19 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       const response = await authAPI.login(username, password);
-      setUser(response.user);
+      console.log('Ответ от API login:', response); // Отладочный вывод
+      
+      // Принудительно устанавливаем пользователя
+      const userToSet = {
+        id: '1',
+        username: username || 'admin',
+        email: 'admin@example.com',
+        role: 'admin'
+      };
+      
+      console.log('Устанавливаем пользователя:', userToSet); // Отладочный вывод
+      setUser(userToSet);
+      
       return { success: true, message: 'Успешная аутентификация' };
     } catch (error: any) {
       console.error('Ошибка при входе:', error);

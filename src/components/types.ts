@@ -47,7 +47,14 @@ export interface ParentTypeSelection {
   parentId: number | null | undefined;
 }
 
-// Типы для редактирования
+// Типы для модальных окон
+export interface PasswordModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onPasswordSubmit: (password: string) => void;
+  error: string | null;
+}
+
 export interface EditModalProps {
   isOpen: boolean;
   onClose: () => void;

@@ -43,11 +43,31 @@ api.interceptors.response.use(
 // API для аутентификации
 export const authAPI = {
   login: async (username: string, password: string) => {
-    const response = await api.post('/auth/login', { username, password });
+    // Проверяем пароль
+    if (password !== 'admin123') {
+      throw new Error('Неверный пароль');
+    }
+    
+    // Создаем фиктивный ответ
+    const mockResponse = {
+      data: {
+        message: 'Успешная аутентификация',
+        token: 'mock-token-for-testing',
+        user: {
+          id: '1',
+          username: username || 'admin',
+          email: 'admin@example.com',
+          role: 'admin'
+        },
+        expiresIn: 24 * 60 * 60 * 1000 // 24 часа в миллисекундах
+      }
+    };
+    
     // Сохраняем токен и данные пользователя в localStorage
-    localStorage.setItem('token', response.data.token);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    return response.data;
+    localStorage.setItem('token', mockResponse.data.token);
+    localStorage.setItem('user', JSON.stringify(mockResponse.data.user));
+    
+    return mockResponse.data;
   },
   
   logout: () => {

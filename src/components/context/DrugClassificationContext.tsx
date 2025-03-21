@@ -49,8 +49,11 @@ export interface DrugClassificationActions {
   // Действия для модальных окон
   openPasswordModal: () => void;
   closePasswordModal: () => void;
-  handlePasswordSubmit: (success: boolean) => void;
+  handlePasswordSubmit: (password: string) => Promise<void>;
   exitEditorMode: () => void;
+  setIsEditorMode: (value: boolean) => void;
+  setPasswordModalOpen: (value: boolean) => void;
+  setPasswordError: (error: string | null) => void;
   
   openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
   closeEditModal: () => void;
