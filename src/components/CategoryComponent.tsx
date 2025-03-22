@@ -34,7 +34,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   return (
     <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
       <div className="flex justify-between items-start">
-        <div className="w-2/5 pr-4">
+        <div className="w-2/5 pr-4 min-w-0 overflow-hidden">
           {isEditingTitle === category.id ? (
             <div className="flex items-center">
               <input
@@ -46,22 +46,22 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
               />
               <button
                 onClick={() => onFinishEditingTitle('category', category.id)}
-                className="p-1.5 bg-indigo-100 rounded-md text-indigo-700 hover:bg-indigo-200 transition-all duration-200"
+                className="p-1.5 bg-indigo-100 rounded-md text-indigo-700 hover:bg-indigo-200 transition-all duration-200 flex-shrink-0"
               >
                 <Edit size={16} />
               </button>
             </div>
           ) : (
             <h5 className="text-base font-semibold flex items-center text-gray-800 group">
-              <ArrowRight size={15} className="mr-1.5 text-indigo-500" />
-              {category.name}
+              <ArrowRight size={15} className="mr-1.5 text-indigo-500 flex-shrink-0" />
+              <span className="break-words break-all whitespace-normal w-full">{category.name}</span>
               {isEditorMode && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onStartEditingTitle('category', category);
                   }}
-                  className="ml-2 p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  className="ml-2 p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100 flex-shrink-0"
                 >
                   <Edit size={10} className="text-gray-600" />
                 </button>

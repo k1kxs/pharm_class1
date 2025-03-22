@@ -12,6 +12,10 @@ import EditModal from './EditModal';
 import ExportModal from './ExportModal';
 import ColorPickerModal from './ColorPickerModal';
 
+// Импортируем компоненты для drag-and-drop
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+
 const ModernDrugClassification: React.FC = () => {
   // Используем наш новый хук для доступа к глобальному состоянию и действиям
   const { 
@@ -63,6 +67,11 @@ const ModernDrugClassification: React.FC = () => {
     handleGroupDragOver,
     handleGroupDrop,
     handleGroupDragEnd,
+    // Новые методы для dnd-kit
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    sensors,
     setIsEditorMode,
     setPasswordModalOpen,
     setPasswordError,
@@ -242,62 +251,71 @@ const ModernDrugClassification: React.FC = () => {
         
         <div className="space-y-8">
           {hasResults ? (
-            cycles.map((cycle) => (
-              <CycleComponent
-                key={cycle.id}
-                cycle={cycle}
-                isSelected={selectedCycles.includes(cycle.id)}
-                isEditorMode={isEditorMode}
-                isEditingTitle={isEditingTitle}
-                editingTitleValue={editingTitleValue}
-                draggedCycle={draggedCycle}
-                dragOverCycle={dragOverCycle}
-                onToggleCycle={toggleCycle}
-                onStartEditingTitle={startEditingTitle}
-                onFinishEditingTitle={finishEditingTitle}
-                onEditingTitleChange={setEditingTitleValue}
-                onOpenColorPicker={openColorPicker}
-                onDeleteItem={handleDelete}
-                onOpenEditor={(type, parentId) => openEditModal(type as 'cycle' | 'group' | 'subgroup' | 'category', parentId)}
-                onCycleDragStart={handleCycleDragStart}
-                onCycleDragOver={handleCycleDragOver}
-                onCycleDrop={handleCycleDrop}
-                onCycleDragEnd={handleCycleDragEnd}
-                onGroupDragStart={handleGroupDragStart}
-                onGroupDragOver={handleGroupDragOver}
-                onGroupDrop={handleGroupDrop}
-                onGroupDragEnd={handleGroupDragEnd}
-              />
-            ))
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={cycles.map(cycle => cycle.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {cycles.map((cycle) => (
+                  <CycleComponent
+                    key={cycle.id}
+                    cycle={cycle}
+                    isSelected={selectedCycles.includes(cycle.id)}
+                    isEditorMode={isEditorMode}
+                    isEditingTitle={isEditingTitle}
+                    editingTitleValue={editingTitleValue}
+                    draggedCycle={draggedCycle}
+                    dragOverCycle={dragOverCycle}
+                    onToggleCycle={toggleCycle}
+                    onStartEditingTitle={startEditingTitle}
+                    onFinishEditingTitle={finishEditingTitle}
+                    onEditingTitleChange={setEditingTitleValue}
+                    onOpenColorPicker={openColorPicker}
+                    onDeleteItem={handleDelete}
+                    onOpenEditor={(type, parentId) => openEditModal(type as 'cycle' | 'group' | 'subgroup' | 'category', parentId)}
+                    onCycleDragStart={handleCycleDragStart}
+                    onCycleDragOver={handleCycleDragOver}
+                    onCycleDrop={handleCycleDrop}
+                    onCycleDragEnd={handleCycleDragEnd}
+                    onGroupDragStart={handleGroupDragStart}
+                    onGroupDragOver={handleGroupDragOver}
+                    onGroupDrop={handleGroupDrop}
+                    onGroupDragEnd={handleGroupDragEnd}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          ) : hasSearchResults ? (
+            <div className="text-center py-24 bg-white rounded-xl shadow-sm">
+              <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-xl text-gray-600 font-medium">Поиск не дал результатов</h3>
+              <p className="text-gray-500 mt-2">
+                Попробуйте изменить поисковый запрос
+              </p>
+            </div>
           ) : (
-            <div className="text-center text-gray-500 p-8 bg-white rounded-lg shadow-md">
-              {searchQuery ? (
-                <div className="py-8">
-                  <div className="text-lg font-medium mb-3">Ничего не найдено</div>
-                  <p>
-                    По запросу "{searchQuery}" ничего не найдено. Попробуйте изменить запрос или очистить поиск.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-8">
-                  <div className="text-lg font-medium mb-3">Нет данных</div>
-                  <p>
-                    {isEditorMode ? 
-                      "Добавьте новый цикл с помощью кнопки выше." : 
-                      "В базе данных пока нет информации о лекарственных средствах."}
-                  </p>
-                </div>
-              )}
+            <div className="text-center py-24 bg-white rounded-xl shadow-sm">
+              <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-xl text-gray-600 font-medium">Данные отсутствуют</h3>
+              <p className="text-gray-500 mt-2">
+                {isEditorMode ? 'Добавьте новый цикл с помощью кнопки выше' : 'В базе данных пока нет информации'}
+              </p>
             </div>
           )}
         </div>
       </main>
       
-      {/* Футер */}
-      <footer className="bg-white border-t py-6">
+      {/* Подвал */}
+      <footer className="bg-white border-t py-8 mt-auto">
         <div className="container mx-auto px-4">
-          <div className="text-sm text-gray-500 text-center">
-            © ФГБОУ ВО ОрГМУ Минздрава России, кафедра фармакологии
+          <div className="text-center text-gray-500 text-sm">
+            © 2023 Кафедра фармакологии ОрГМУ. Все права защищены.
           </div>
         </div>
       </footer>

@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, Edit, Trash, Palette, Plus, MoveVertical } f
 import { Cycle, Group } from './types';
 import GroupComponent from './GroupComponent';
 import { useDrugClassification } from './context/DrugClassificationContext';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CycleComponentProps {
   cycle: Cycle;
@@ -54,11 +56,35 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
   onGroupDrop,
   onGroupDragEnd
 }) => {
-  // Можно получить дополнительные данные из контекста при необходимости
-  // const { ... } = useDrugClassification();
+  // Используем хук useSortable из @dnd-kit/sortable для улучшенного drag-and-drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: cycle.id,
+    data: {
+      type: 'cycle',
+      cycle
+    },
+    disabled: !isEditorMode || isEditingTitle === cycle.id
+  });
+  
+  // Применяем стили для элемента при перетаскивании
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1
+  };
   
   return (
     <div 
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
       key={cycle.id} 
       className={`rounded-xl overflow-hidden shadow-md transition-all duration-300 bg-white ${
         dragOverCycle?.id === cycle.id ? 'border-2 border-blue-500 scale-[1.01]' : ''
@@ -75,7 +101,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       <div 
         className={`bg-gradient-to-r ${cycle.gradient || ''} p-4 flex justify-between items-center text-gray-800 ${!cycle.gradient || cycle.gradient === '' ? 'bg-gray-100' : ''}`}
       >
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-hidden mr-2">
           {isEditingTitle === cycle.id ? (
             <div className="flex items-center w-full max-w-md">
               <input
@@ -87,32 +113,32 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
               />
               <button
                 onClick={() => onFinishEditingTitle('cycle', cycle.id)}
-                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200"
+                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200 flex-shrink-0"
               >
                 <Edit size={16} />
               </button>
             </div>
           ) : (
             <div 
-              className="group flex items-center cursor-pointer"
+              className="group flex items-center cursor-pointer overflow-hidden"
               onClick={() => onToggleCycle(cycle.id)}
             >
-              <div className="flex items-center transition-transform duration-200">
+              <div className="flex items-center transition-transform duration-200 flex-shrink-0">
                 {isSelected ? 
                   <ChevronDown size={22} className="mr-2 transition-transform duration-200" /> : 
                   <ChevronRight size={22} className="mr-2 transition-transform duration-200 group-hover:translate-x-1" />
                 }
               </div>
               
-              <h2 className="text-xl font-bold flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm">
-                {cycle.name}
+              <h2 className="text-xl font-bold flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm min-w-0 max-w-full">
+                <span className="break-words break-all whitespace-normal w-full">{cycle.name}</span>
                 {isEditorMode && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartEditingTitle('cycle', cycle);
                     }}
-                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100 flex-shrink-0"
                   >
                     <Edit size={14} className="text-gray-700" />
                   </button>
@@ -122,9 +148,12 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
           )}
         </div>
         {isEditorMode && (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {!isEditingTitle && (
-              <div className="flex items-center p-1 bg-white rounded-md">
+              <div 
+                className="cursor-grab active:cursor-grabbing flex items-center p-1.5 bg-white rounded-md hover:bg-gray-200 transition-all duration-200"
+                {...listeners}
+              >
                 <MoveVertical size={16} className="text-gray-700" />
               </div>
             )}

@@ -5,6 +5,9 @@ import { textContainsQuery } from '../utils/textUtils';
 import PDFGenerator from '../PDFGenerator';
 import { useAuth } from './AuthProvider';
 import { dataAPI } from '../../services/api';
+// Импорт компонентов из @dnd-kit
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 
 interface DrugClassificationProviderProps {
   children: React.ReactNode;
@@ -49,6 +52,24 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   
   // Состояния для палитры цветов
   const [itemType, setItemType] = useState<'cycle' | 'group'>('cycle');
+  
+  // Конфигурация сенсоров DnD (для мыши и тач-устройств)
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      // Требуется нажать и удерживать элемент перед началом перетаскивания
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      // Настройки для сенсорных устройств
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    })
+  );
   
   // Загрузка данных из API при монтировании компонента
   useEffect(() => {
@@ -676,104 +697,157 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     setCycles(newCycles);
   }
   
-  // Обработчики для drag-and-drop циклов
-  const handleCycleDragStart = (e: React.DragEvent, cycle: Cycle) => {
-    setDraggedCycle(cycle);
-  }
-  
-  const handleCycleDragOver = (e: React.DragEvent, cycle: Cycle) => {
-    e.preventDefault();
+  // Обработчики для DnD-kit
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const { id, data } = active;
     
-    if (draggedCycle && draggedCycle.id !== cycle.id) {
-      setDragOverCycle(cycle);
+    // Определяем тип перетаскиваемого элемента по data.current
+    const itemType = data.current?.type;
+    
+    if (itemType === 'cycle') {
+      const cycle = cycles.find(c => c.id === id);
+      if (cycle) {
+        setDraggedCycle(cycle);
+      }
+    } else if (itemType === 'group') {
+      const cycleId = data.current?.cycleId;
+      const cycle = cycles.find(c => c.id === cycleId);
+      if (cycle) {
+        const group = cycle.groups.find(g => g.id === id);
+        if (group) {
+          setDraggedGroup({ ...group, cycleId });
+        }
+      }
     }
-  }
-  
-  const handleCycleDrop = (e: React.DragEvent, targetCycle: Cycle) => {
-    e.preventDefault();
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
     
-    if (draggedCycle && draggedCycle.id !== targetCycle.id) {
-      const sourceIndex = cycles.findIndex(c => c.id === draggedCycle.id);
-      const targetIndex = cycles.findIndex(c => c.id === targetCycle.id);
+    if (!over) return;
+    
+    const { id: activeId, data: activeData } = active;
+    const { id: overId, data: overData } = over;
+    
+    // Пропускаем, если перетаскиваем над тем же элементом
+    if (activeId === overId) return;
+    
+    const activeType = activeData.current?.type;
+    const overType = overData.current?.type;
+    
+    // Обрабатываем перетаскивание цикла
+    if (activeType === 'cycle' && overType === 'cycle') {
+      const cycle = cycles.find(c => c.id === overId);
+      if (cycle) {
+        setDragOverCycle(cycle);
+      }
+    } 
+    // Обрабатываем перетаскивание группы
+    else if (activeType === 'group' && overType === 'group') {
+      const activeCycleId = activeData.current?.cycleId;
+      const overCycleId = overData.current?.cycleId;
       
-      if (sourceIndex !== -1 && targetIndex !== -1) {
-        const newCycles = [...cycles];
-        const [removed] = newCycles.splice(sourceIndex, 1);
-        newCycles.splice(targetIndex, 0, removed);
+      const overCycle = cycles.find(c => c.id === overCycleId);
+      if (overCycle) {
+        const group = overCycle.groups.find(g => g.id === overId);
+        if (group) {
+          setDragOverGroup({ ...group, cycleId: overCycleId });
+        }
+      }
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) {
+      // Если перетаскивание завершилось не над элементом, сбрасываем состояние
+      setDraggedCycle(null);
+      setDragOverCycle(null);
+      setDraggedGroup(null);
+      setDragOverGroup(null);
+      return;
+    }
+    
+    const { id: activeId, data: activeData } = active;
+    const { id: overId, data: overData } = over;
+    
+    // Если перетаскиваем элемент на самого себя - ничего не делаем
+    if (activeId === overId) {
+      setDraggedCycle(null);
+      setDragOverCycle(null);
+      setDraggedGroup(null);
+      setDragOverGroup(null);
+      return;
+    }
+    
+    const activeType = activeData.current?.type;
+    
+    // Обрабатываем перемещение циклов
+    if (activeType === 'cycle') {
+      const activeIndex = cycles.findIndex(c => c.id === activeId);
+      const overIndex = cycles.findIndex(c => c.id === overId);
+      
+      if (activeIndex !== -1 && overIndex !== -1) {
+        const newCycles = arrayMove(cycles, activeIndex, overIndex);
         setCycles(newCycles);
       }
-    }
-    
-    setDraggedCycle(null);
-    setDragOverCycle(null);
-  }
-  
-  const handleCycleDragEnd = () => {
-    setDraggedCycle(null);
-    setDragOverCycle(null);
-  }
-  
-  // Обработчики для drag-and-drop групп
-  const handleGroupDragStart = (e: React.DragEvent, group: Group, cycleId: number) => {
-    setDraggedGroup({ ...group, cycleId });
-  }
-  
-  const handleGroupDragOver = (e: React.DragEvent, group: Group, cycleId: number) => {
-    e.preventDefault();
-    
-    if (draggedGroup && (draggedGroup.id !== group.id || draggedGroup.cycleId !== cycleId)) {
-      setDragOverGroup({ ...group, cycleId });
-    }
-  }
-  
-  const handleGroupDrop = (e: React.DragEvent, targetGroup: Group, targetCycleId: number) => {
-    e.preventDefault();
-    
-    if (draggedGroup) {
-      const sourceCycleId = draggedGroup.cycleId;
-      
-      // Если это та же группа или если их позиции идентичны, не делаем ничего
-      if (draggedGroup.id === targetGroup.id && sourceCycleId === targetCycleId) {
-        setDraggedGroup(null);
-        setDragOverGroup(null);
-        return;
-      }
+    } 
+    // Обрабатываем перемещение групп
+    else if (activeType === 'group') {
+      const activeCycleId = activeData.current?.cycleId;
+      const overCycleId = overData.current?.cycleId;
       
       const newCycles = [...cycles];
       
-      // Находим исходный и целевой циклы
-      const sourceCycleIndex = newCycles.findIndex(c => c.id === sourceCycleId);
-      const targetCycleIndex = newCycles.findIndex(c => c.id === targetCycleId);
+      // Находим индексы циклов и групп
+      const activeCycleIndex = newCycles.findIndex(c => c.id === activeCycleId);
+      const overCycleIndex = newCycles.findIndex(c => c.id === overCycleId);
       
-      if (sourceCycleIndex !== -1 && targetCycleIndex !== -1) {
-        // Удаляем группу из исходного цикла
-        const draggedGroupIndex = newCycles[sourceCycleIndex].groups.findIndex(g => g.id === draggedGroup.id);
-        if (draggedGroupIndex !== -1) {
-          const [removed] = newCycles[sourceCycleIndex].groups.splice(draggedGroupIndex, 1);
+      if (activeCycleIndex !== -1 && overCycleIndex !== -1) {
+        // Перемещение в рамках одного цикла
+        if (activeCycleId === overCycleId) {
+          const activeGroupIndex = newCycles[activeCycleIndex].groups.findIndex(g => g.id === activeId);
+          const overGroupIndex = newCycles[activeCycleIndex].groups.findIndex(g => g.id === overId);
           
-          // Находим целевую группу в целевом цикле
-          const targetGroupIndex = newCycles[targetCycleIndex].groups.findIndex(g => g.id === targetGroup.id);
-          if (targetGroupIndex !== -1) {
-            // Добавляем группу в целевой цикл после целевой группы
-            newCycles[targetCycleIndex].groups.splice(targetGroupIndex + 1, 0, removed);
-          } else {
-            // Если целевая группа не найдена, добавляем в конец
-            newCycles[targetCycleIndex].groups.push(removed);
+          if (activeGroupIndex !== -1 && overGroupIndex !== -1) {
+            newCycles[activeCycleIndex].groups = arrayMove(
+              newCycles[activeCycleIndex].groups, 
+              activeGroupIndex, 
+              overGroupIndex
+            );
+            setCycles(newCycles);
+          }
+        } 
+        // Перемещение между разными циклами
+        else {
+          const activeGroupIndex = newCycles[activeCycleIndex].groups.findIndex(g => g.id === activeId);
+          const overGroupIndex = newCycles[overCycleIndex].groups.findIndex(g => g.id === overId);
+          
+          if (activeGroupIndex !== -1) {
+            // Копируем группу для перемещения
+            const [groupToMove] = newCycles[activeCycleIndex].groups.splice(activeGroupIndex, 1);
+            
+            // Вставляем группу в целевой цикл
+            if (overGroupIndex !== -1) {
+              newCycles[overCycleIndex].groups.splice(overGroupIndex + 1, 0, groupToMove);
+            } else {
+              newCycles[overCycleIndex].groups.push(groupToMove);
+            }
+            
+            setCycles(newCycles);
           }
         }
       }
-      
-      setCycles(newCycles);
     }
     
+    // Очищаем состояние перетаскивания
+    setDraggedCycle(null);
+    setDragOverCycle(null);
     setDraggedGroup(null);
     setDragOverGroup(null);
-  }
-  
-  const handleGroupDragEnd = () => {
-    setDraggedGroup(null);
-    setDragOverGroup(null);
-  }
+  };
   
   // Функция для проверки сессии перед выполнением защищенных действий
   const checkSessionBeforeAction = (action: () => void) => {
@@ -822,58 +896,164 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     checkSessionBeforeAction(() => finishEditingTitle(type, id));
   }
   
+  // Обновление старых обработчиков dnd для обратной совместимости
+  const handleCycleDragStart = (e: React.DragEvent, cycle: Cycle) => {
+    e.dataTransfer.setData('text/plain', cycle.id.toString());
+    setDraggedCycle(cycle);
+  }
+  
+  const handleCycleDragOver = (e: React.DragEvent, cycle: Cycle) => {
+    e.preventDefault();
+    
+    if (draggedCycle && draggedCycle.id !== cycle.id) {
+      setDragOverCycle(cycle);
+    }
+  }
+  
+  const handleCycleDrop = (e: React.DragEvent, targetCycle: Cycle) => {
+    e.preventDefault();
+    
+    if (draggedCycle && draggedCycle.id !== targetCycle.id) {
+      const sourceIndex = cycles.findIndex(c => c.id === draggedCycle.id);
+      const targetIndex = cycles.findIndex(c => c.id === targetCycle.id);
+      
+      if (sourceIndex !== -1 && targetIndex !== -1) {
+        const newCycles = arrayMove(cycles, sourceIndex, targetIndex);
+        setCycles(newCycles);
+      }
+    }
+    
+    setDraggedCycle(null);
+    setDragOverCycle(null);
+  }
+  
+  const handleCycleDragEnd = () => {
+    setDraggedCycle(null);
+    setDragOverCycle(null);
+  }
+  
+  // Обновленные обработчики для перетаскивания групп
+  const handleGroupDragStart = (e: React.DragEvent, group: Group, cycleId: number) => {
+    e.dataTransfer.setData('text/plain', group.id.toString());
+    e.dataTransfer.setData('cycleId', cycleId.toString());
+    setDraggedGroup({ ...group, cycleId });
+  }
+  
+  const handleGroupDragOver = (e: React.DragEvent, group: Group, cycleId: number) => {
+    e.preventDefault();
+    
+    if (draggedGroup && (draggedGroup.id !== group.id || draggedGroup.cycleId !== cycleId)) {
+      setDragOverGroup({ ...group, cycleId });
+    }
+  }
+  
+  const handleGroupDrop = (e: React.DragEvent, targetGroup: Group, targetCycleId: number) => {
+    e.preventDefault();
+    
+    if (draggedGroup) {
+      const sourceCycleId = draggedGroup.cycleId;
+      
+      // Если это та же группа или если их позиции идентичны, не делаем ничего
+      if (draggedGroup.id === targetGroup.id && sourceCycleId === targetCycleId) {
+        setDraggedGroup(null);
+        setDragOverGroup(null);
+        return;
+      }
+      
+      const newCycles = [...cycles];
+      
+      // Находим исходный и целевой циклы
+      const sourceCycleIndex = newCycles.findIndex(c => c.id === sourceCycleId);
+      const targetCycleIndex = newCycles.findIndex(c => c.id === targetCycleId);
+      
+      if (sourceCycleIndex !== -1 && targetCycleIndex !== -1) {
+        // Если перемещение внутри одного цикла
+        if (sourceCycleId === targetCycleId) {
+          const draggedGroupIndex = newCycles[sourceCycleIndex].groups.findIndex(g => g.id === draggedGroup.id);
+          const targetGroupIndex = newCycles[sourceCycleIndex].groups.findIndex(g => g.id === targetGroup.id);
+          
+          if (draggedGroupIndex !== -1 && targetGroupIndex !== -1) {
+            // Используем arrayMove для более чистого кода
+            newCycles[sourceCycleIndex].groups = arrayMove(
+              newCycles[sourceCycleIndex].groups,
+              draggedGroupIndex,
+              targetGroupIndex
+            );
+          }
+        } else {
+          // Удаляем группу из исходного цикла
+          const draggedGroupIndex = newCycles[sourceCycleIndex].groups.findIndex(g => g.id === draggedGroup.id);
+          if (draggedGroupIndex !== -1) {
+            const [removed] = newCycles[sourceCycleIndex].groups.splice(draggedGroupIndex, 1);
+            
+            // Находим целевую группу в целевом цикле
+            const targetGroupIndex = newCycles[targetCycleIndex].groups.findIndex(g => g.id === targetGroup.id);
+            if (targetGroupIndex !== -1) {
+              // Добавляем группу в целевой цикл после целевой группы
+              newCycles[targetCycleIndex].groups.splice(targetGroupIndex + 1, 0, removed);
+            } else {
+              // Если целевая группа не найдена, добавляем в конец
+              newCycles[targetCycleIndex].groups.push(removed);
+            }
+          }
+        }
+      }
+      
+      setCycles(newCycles);
+    }
+    
+    setDraggedGroup(null);
+    setDragOverGroup(null);
+  }
+  
+  const handleGroupDragEnd = () => {
+    setDraggedGroup(null);
+    setDragOverGroup(null);
+  }
+  
   // Создаем значение контекста, объединяя состояние и действия
   const contextValue: DrugClassificationContextType = {
     // Состояние
-    cycles,
+    cycles: filteredCycles,
     selectedCycles,
-    passwordModalOpen,
-    passwordError,
+    setSelectedCycles,
     isEditorMode,
+    setIsEditorMode,
+    passwordModalOpen,
+    openPasswordModal,
+    closePasswordModal,
+    handlePasswordSubmit,
+    passwordError,
+    isAuthenticated,
+    exitEditorMode,
+    openEditModal: secureOpenEditModal,
+    closeEditModal,
     editModalOpen,
     editType,
     editTitle,
+    handleSaveEdit: secureHandleSaveEdit,
     editData,
     parentForEdit,
     exportModalOpen,
-    colorPickerOpen,
-    selectedCycleId,
+    openExportModal,
+    closeExportModal,
+    handleExport,
+    toggleCycle,
+    searchQuery,
+    setSearchQuery,
     isEditingTitle,
     editingTitleValue,
-    searchQuery,
+    startEditingTitle: secureStartEditingTitle,
+    finishEditingTitle: secureFinishEditingTitle,
+    onEditingTitleChange: setEditingTitleValue,
+    setEditingTitleValue,
+    handleDelete: secureHandleDelete,
+    // DnD состояния
     draggedCycle,
     dragOverCycle,
     draggedGroup,
     dragOverGroup,
-    draggedSubgroup,
-    dragOverSubgroup,
-    draggedCategory,
-    itemType,
-    
-    // Действия
-    setCycles,
-    toggleCycle,
-    openPasswordModal,
-    closePasswordModal,
-    handlePasswordSubmit,
-    exitEditorMode,
-    setIsEditorMode,
-    setPasswordModalOpen,
-    setPasswordError,
-    openEditModal: secureOpenEditModal,
-    closeEditModal,
-    handleSaveEdit: secureHandleSaveEdit,
-    openExportModal,
-    closeExportModal,
-    handleExport,
-    openColorPicker,
-    closeColorPicker,
-    handleColorSelect,
-    startEditingTitle: secureStartEditingTitle,
-    finishEditingTitle: secureFinishEditingTitle,
-    setEditingTitleValue,
-    setSearchQuery,
-    handleDelete: secureHandleDelete,
+    // Старые обработчики DnD
     handleCycleDragStart,
     handleCycleDragOver,
     handleCycleDrop,
@@ -882,6 +1062,23 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     handleGroupDragOver,
     handleGroupDrop,
     handleGroupDragEnd,
+    // Новые обработчики DnD из @dnd-kit
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    sensors,
+    // Работа с цветами
+    colorPickerOpen,
+    openColorPicker,
+    closeColorPicker,
+    selectedCycleId,
+    itemType,
+    handleColorSelect,
+    // Шифрование и безопасность
+    checkSessionBeforeAction,
+    setCycles,
+    setPasswordModalOpen,
+    setPasswordError
   }
   
   return (

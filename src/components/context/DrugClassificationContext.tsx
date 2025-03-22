@@ -1,5 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory } from '../types';
+import { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 
 // Тип состояния
 export interface DrugClassificationState {
@@ -11,6 +12,7 @@ export interface DrugClassificationState {
   passwordModalOpen: boolean;
   passwordError: string | null;
   isEditorMode: boolean;
+  isAuthenticated: boolean;
   editModalOpen: boolean;
   editType: 'cycle' | 'group' | 'subgroup' | 'category';
   editTitle: string;
@@ -46,6 +48,7 @@ export interface DrugClassificationActions {
   // Основные действия с данными
   setCycles: (cycles: Cycle[]) => void;
   toggleCycle: (cycleId: number) => void;
+  setSelectedCycles: (cycles: number[]) => void;
   
   // Действия для модальных окон
   openPasswordModal: () => void;
@@ -90,6 +93,12 @@ export interface DrugClassificationActions {
   handleGroupDragOver: (e: React.DragEvent, group: Group, cycleId: number) => void;
   handleGroupDrop: (e: React.DragEvent, group: Group, cycleId: number) => void;
   handleGroupDragEnd: () => void;
+  
+  // Новые действия для @dnd-kit
+  handleDragStart: (event: DragStartEvent) => void;
+  handleDragOver: (event: DragOverEvent) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
+  sensors: any; // Тип для сенсоров dnd-kit
 }
 
 // Создаем тип для полного контекста (состояние + действия)

@@ -2,6 +2,8 @@ import React from 'react';
 import { ChevronDown, ChevronRight, Edit, Trash, Plus, GripVertical, Palette } from 'lucide-react';
 import { Group, Subgroup } from './types';
 import SubgroupComponent from './SubgroupComponent';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface GroupComponentProps {
   group: Group;
@@ -40,9 +42,38 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
   onGroupDragEnd
 }) => {
   const [isGroupExpanded, setIsGroupExpanded] = React.useState(false);
+  
+  // Используем хук useSortable из @dnd-kit/sortable для улучшенного drag-and-drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: group.id,
+    data: {
+      type: 'group',
+      group,
+      cycleId
+    },
+    disabled: !isEditorMode || isEditingTitle === group.id
+  });
+  
+  // Применяем стили для элемента при перетаскивании
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 1000 : 1
+  };
 
   return (
     <div 
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
       className={`border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 bg-white`}
       draggable={isEditorMode}
       onDragStart={(e) => onGroupDragStart(e, group, cycleId)}
@@ -51,7 +82,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
       onDragEnd={onGroupDragEnd}
     >
       <div className={`p-3.5 ${group.gradient && group.gradient !== '' ? `bg-gradient-to-r ${group.gradient}` : 'bg-gradient-to-r from-gray-50 to-white'} rounded-t-lg border-b flex justify-between items-center text-gray-800`}>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-hidden mr-2">
           {isEditingTitle === group.id ? (
             <div className="flex items-center w-full max-w-md">
               <input
@@ -63,32 +94,32 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
               />
               <button
                 onClick={() => onFinishEditingTitle('group', group.id)}
-                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200"
+                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200 flex-shrink-0"
               >
                 <Edit size={16} />
               </button>
             </div>
           ) : (
             <div 
-              className="group flex items-center cursor-pointer"
+              className="group flex items-center cursor-pointer overflow-hidden"
               onClick={() => setIsGroupExpanded(!isGroupExpanded)}
             >
-              <div className="flex items-center transition-transform duration-200">
+              <div className="flex items-center transition-transform duration-200 flex-shrink-0">
                 {isGroupExpanded ? 
                   <ChevronDown size={20} className="mr-2.5 text-blue-600" /> : 
                   <ChevronRight size={20} className="mr-2.5 text-blue-600 transition-transform duration-200 group-hover:translate-x-1" />
                 }
               </div>
               
-              <h3 className="text-lg font-medium flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm">
-                <span className="font-bold">{group.name}</span>
+              <h3 className="text-lg font-medium flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm min-w-0 max-w-full">
+                <span className="break-words break-all whitespace-normal w-full">{group.name}</span>
                 {isEditorMode && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartEditingTitle('group', group);
                     }}
-                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100 flex-shrink-0"
                   >
                     <Edit size={14} className="text-gray-600" />
                   </button>
@@ -98,9 +129,12 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
           )}
         </div>
         {isEditorMode && (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {!isEditingTitle && (
-              <div className="cursor-grab active:cursor-grabbing p-1.5 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+              <div 
+                className="cursor-grab active:cursor-grabbing p-1.5 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                {...listeners}
+              >
                 <GripVertical size={16} />
               </div>
             )}
