@@ -14,12 +14,9 @@ import ColorPickerModal from './ColorPickerModal';
 
 const ModernDrugClassification: React.FC = () => {
   // Используем наш новый хук для доступа к глобальному состоянию и действиям
-  const {
-    // Данные
-    cycles,
+  const { 
+    cycles, 
     selectedCycles,
-    
-    // Состояния для модальных окон
     passwordModalOpen,
     passwordError,
     isEditorMode,
@@ -31,19 +28,14 @@ const ModernDrugClassification: React.FC = () => {
     exportModalOpen,
     colorPickerOpen,
     selectedCycleId,
-    
-    // Состояния для редактирования заголовков
     isEditingTitle,
     editingTitleValue,
-    
-    // Состояния для поиска
     searchQuery,
-    
-    // Состояния для drag and drop
     draggedCycle,
     dragOverCycle,
+    itemType,
     
-    // Действия
+    // Методы
     toggleCycle,
     openPasswordModal,
     closePasswordModal,
@@ -149,7 +141,9 @@ const ModernDrugClassification: React.FC = () => {
         isOpen={colorPickerOpen}
         onClose={closeColorPicker}
         onColorSelect={handleColorSelect}
-        currentGradient={cycles.find(c => c.id === selectedCycleId)?.gradient}
+        currentGradient={cycles.find(c => c.id === selectedCycleId)?.gradient || 
+          cycles.flatMap(c => c.groups).find(g => g.id === selectedCycleId)?.gradient}
+        title={itemType === 'cycle' ? 'Выбор цвета цикла' : 'Выбор цвета группы'}
       />
       
       {/* Заголовок с режимом редактирования */}

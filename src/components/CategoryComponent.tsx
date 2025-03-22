@@ -34,9 +34,9 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   return (
     <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
       <div className="flex justify-between items-start">
-        <div className="flex-1">
+        <div className="w-2/5 pr-4">
           {isEditingTitle === category.id ? (
-            <div className="flex items-center mb-3">
+            <div className="flex items-center">
               <input
                 type="text"
                 value={editingTitleValue}
@@ -52,7 +52,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
               </button>
             </div>
           ) : (
-            <h5 className="text-base font-semibold mb-3 flex items-center text-gray-800 group">
+            <h5 className="text-base font-semibold flex items-center text-gray-800 group">
               <ArrowRight size={15} className="mr-1.5 text-indigo-500" />
               {category.name}
               {isEditorMode && (
@@ -68,9 +68,11 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
               )}
             </h5>
           )}
-          
+        </div>
+        
+        <div className="w-3/5">
           {category.preparations ? (
-            <div className="mb-1">
+            <div>
               <div
                 className="text-sm text-gray-700 formatted-preparations prep-container"
                 dangerouslySetInnerHTML={{ __html: category.preparations }}
@@ -107,7 +109,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
         {isEditorMode && (
           <button
             onClick={() => onDeleteItem('category', category.id)}
-            className="p-1.5 bg-gray-100 rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200 flex-shrink-0 mt-1"
+            className="p-1.5 bg-gray-100 rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200 flex-shrink-0 ml-2"
             title="Удалить категорию"
           >
             <Trash size={12} />

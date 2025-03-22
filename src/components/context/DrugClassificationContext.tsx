@@ -19,6 +19,7 @@ export interface DrugClassificationState {
   exportModalOpen: boolean;
   colorPickerOpen: boolean;
   selectedCycleId: number | null;
+  itemType: 'cycle' | 'group';
   
   // Состояния для редактирования заголовков
   isEditingTitle: number | null;
@@ -63,7 +64,7 @@ export interface DrugClassificationActions {
   closeExportModal: () => void;
   handleExport: (cycleIds: number[]) => void;
   
-  openColorPicker: (cycleId: number) => void;
+  openColorPicker: (itemId: number, itemType?: 'cycle' | 'group') => void;
   closeColorPicker: () => void;
   handleColorSelect: (gradient: string) => void;
   

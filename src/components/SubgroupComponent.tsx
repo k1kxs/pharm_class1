@@ -67,7 +67,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
               </div>
               
               <h4 className="text-base font-medium flex items-center text-gray-700">
-                {subgroup.name}
+                <span className="font-bold">{subgroup.name}</span>
                 {isEditorMode && (
                   <button
                     onClick={(e) => {
@@ -97,47 +97,51 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
       </div>
       
       {isSubgroupExpanded && (
-        <div className="p-3 pl-8 bg-gray-50 rounded-b-lg border-t scale-in">
-          {isEditorMode && (
-            <div className="mb-3 flex justify-end">
-              <button
-                onClick={() => onOpenEditor('category', subgroup.id)}
-                className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-              >
-                <Plus size={12} className="mr-1.5" />
-                <span className="font-medium">Добавить категорию</span>
-              </button>
+        <div className="p-3 bg-gray-50 rounded-b-lg border-t scale-in">
+          <div className="flex flex-row">
+            <div className="w-2/3 space-y-3">
+              {subgroup.categories && subgroup.categories.length > 0 ? (
+                subgroup.categories.map((category: Category) => (
+                  <CategoryComponent
+                    key={category.id}
+                    category={category}
+                    subgroupId={subgroup.id}
+                    groupId={groupId}
+                    cycleId={cycleId}
+                    isEditorMode={isEditorMode}
+                    isEditingTitle={isEditingTitle}
+                    editingTitleValue={editingTitleValue}
+                    onStartEditingTitle={onStartEditingTitle}
+                    onFinishEditingTitle={onFinishEditingTitle}
+                    onEditingTitleChange={onEditingTitleChange}
+                    onDeleteItem={onDeleteItem}
+                    onOpenEditor={onOpenEditor}
+                  />
+                ))
+              ) : (
+                <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
+                  {isEditorMode ? (
+                    <p>Добавьте категорию с помощью кнопки выше</p>
+                  ) : (
+                    <p>В данной подгруппе нет категорий</p>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-          
-          <div className="space-y-3">
-            {subgroup.categories && subgroup.categories.length > 0 ? (
-              subgroup.categories.map((category: Category) => (
-                <CategoryComponent
-                  key={category.id}
-                  category={category}
-                  subgroupId={subgroup.id}
-                  groupId={groupId}
-                  cycleId={cycleId}
-                  isEditorMode={isEditorMode}
-                  isEditingTitle={isEditingTitle}
-                  editingTitleValue={editingTitleValue}
-                  onStartEditingTitle={onStartEditingTitle}
-                  onFinishEditingTitle={onFinishEditingTitle}
-                  onEditingTitleChange={onEditingTitleChange}
-                  onDeleteItem={onDeleteItem}
-                  onOpenEditor={onOpenEditor}
-                />
-              ))
-            ) : (
-              <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
-                {isEditorMode ? (
-                  <p>Добавьте категорию с помощью кнопки выше</p>
-                ) : (
-                  <p>В данной подгруппе нет категорий</p>
-                )}
-              </div>
-            )}
+            
+            <div className="w-1/3 pl-4 pr-8">
+              {isEditorMode && (
+                <div className="flex justify-start mb-3">
+                  <button
+                    onClick={() => onOpenEditor('category', subgroup.id)}
+                    className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                  >
+                    <Plus size={12} className="mr-1.5" />
+                    <span className="font-medium">Добавить категорию</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

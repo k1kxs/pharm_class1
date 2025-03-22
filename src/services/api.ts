@@ -95,13 +95,28 @@ export const authAPI = {
 // API для работы с данными классификации
 export const dataAPI = {
   getData: async () => {
-    const response = await api.get('/data');
-    return response.data;
+    try {
+      // Получение данных из localStorage вместо сервера
+      const localData = localStorage.getItem('drug_classification_data');
+      if (localData) {
+        return JSON.parse(localData);
+      }
+      return { cycles: [] };
+    } catch (error) {
+      console.error('Ошибка при получении данных:', error);
+      return { cycles: [] };
+    }
   },
   
   saveData: async (cycles: any[]) => {
-    const response = await api.post('/data', { cycles });
-    return response.data;
+    try {
+      // Сохранение данных в localStorage вместо сервера
+      localStorage.setItem('drug_classification_data', JSON.stringify({ cycles }));
+      return { message: 'Данные успешно сохранены' };
+    } catch (error) {
+      console.error('Ошибка при сохранении данных:', error);
+      throw new Error('Не удалось сохранить данные');
+    }
   },
   
   // Только для администраторов

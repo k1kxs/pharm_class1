@@ -2,16 +2,22 @@ import { ColorMap } from '../types';
 
 // Карта соответствия градиентов к цветам
 export const gradientColors: ColorMap = {
-  'from-blue-500 via-indigo-500 to-violet-600': '#4682b4',
-  'from-emerald-500 via-teal-500 to-cyan-600': '#3cb371',
-  'from-amber-500 via-orange-500 to-yellow-500': '#ff8c00',
-  'from-rose-500 via-pink-500 to-fuchsia-500': '#ff1493',
-  'from-red-500 via-rose-500 to-pink-500': '#dc143c',
-  'from-purple-600 via-violet-600 to-indigo-600': '#800080',
-  'from-sky-500 via-blue-500 to-indigo-500': '#00bfff',
-  'from-green-500 via-emerald-500 to-teal-500': '#2e8b57',
-  'from-yellow-500 via-amber-500 to-orange-500': '#ffd700',
-  'from-pink-500 via-rose-500 to-red-500': '#ff69b4'
+  '': '#ffffff', // Для опции "Без цвета"
+  'from-blue-300 via-indigo-300 to-violet-400': '#a5b4fc',
+  'from-emerald-300 via-teal-300 to-cyan-400': '#6ee7b7',
+  'from-amber-300 via-orange-300 to-yellow-300': '#fcd34d',
+  'from-red-300 via-rose-300 to-pink-300': '#fda4af',
+  'from-purple-300 via-violet-300 to-indigo-400': '#c4b5fd',
+  'from-sky-300 via-blue-300 to-indigo-300': '#7dd3fc',
+  'from-green-300 via-emerald-300 to-teal-300': '#86efac',
+  'from-yellow-300 via-amber-300 to-orange-300': '#fef08a',
+  'from-pink-300 via-rose-300 to-red-300': '#f9a8d4',
+  'from-gray-300 via-gray-400 to-gray-500': '#d1d5db',
+  'from-stone-300 via-stone-400 to-stone-500': '#d6d3d1',
+  'from-lime-300 via-lime-400 to-green-400': '#bef264',
+  'from-fuchsia-300 via-purple-300 to-pink-300': '#f0abfc',
+  'from-rose-300 via-red-300 to-red-400': '#fecdd3',
+  'from-teal-300 via-cyan-300 to-sky-300': '#5eead4'
 };
 
 // Функция для получения более светлого цвета для заголовков таблиц
@@ -24,21 +30,26 @@ export const getLighterColor = (hexColor: string): string => {
         const firstColor = parts[0].replace('from-', '');
         // Конвертируем названия tailwind цветов в hex
         const colorMap = new Map<string, string>([
-          ['blue-500', '#3b82f6'],
-          ['indigo-500', '#6366f1'],
-          ['violet-600', '#7c3aed'],
-          ['emerald-500', '#10b981'],
-          ['teal-500', '#14b8a6'],
-          ['cyan-600', '#0891b2'],
-          ['amber-500', '#f59e0b'],
-          ['orange-500', '#f97316'],
-          ['yellow-500', '#eab308'],
-          ['red-500', '#ef4444'],
-          ['pink-500', '#ec4899'],
-          ['purple-500', '#a855f7'],
-          ['gray-500', '#6b7280'],
+          ['blue-300', '#93c5fd'],
+          ['indigo-300', '#a5b4fc'],
+          ['violet-400', '#a78bfa'],
+          ['emerald-300', '#6ee7b7'],
+          ['teal-300', '#5eead4'],
+          ['cyan-400', '#22d3ee'],
+          ['amber-300', '#fcd34d'],
+          ['orange-300', '#fdba74'],
+          ['yellow-300', '#fde047'],
+          ['red-300', '#fca5a5'],
+          ['pink-300', '#f9a8d4'],
+          ['purple-300', '#d8b4fe'],
+          ['gray-300', '#d1d5db'],
+          ['stone-300', '#d6d3d1'],
+          ['lime-300', '#bef264'],
+          ['fuchsia-300', '#f0abfc'],
+          ['rose-300', '#fda4af'],
+          ['sky-300', '#7dd3fc'],
         ]);
-        return colorMap.get(firstColor) || '#4682b4';
+        return colorMap.get(firstColor) || '#e0e7ff';
       }
     }
     
@@ -55,7 +66,7 @@ export const getLighterColor = (hexColor: string): string => {
     
     return `#${lighterR.toString(16).padStart(2, '0')}${lighterG.toString(16).padStart(2, '0')}${lighterB.toString(16).padStart(2, '0')}`;
   } catch (error) {
-    return '#8eb3d8'; // Светло-синий цвет по умолчанию
+    return '#e0e7ff'; // Светло-индиговый цвет по умолчанию
   }
 };
 
@@ -68,21 +79,26 @@ export const getVeryLightColor = (hexColor: string): string => {
         const firstColor = parts[0].replace('from-', '');
         // Конвертируем названия tailwind цветов в hex и делаем очень светлыми
         const colorMap = new Map<string, string>([
-          ['blue-500', '#e6f0ff'],
-          ['indigo-500', '#eef2ff'],
-          ['violet-600', '#f5f3ff'],
-          ['emerald-500', '#ecfdf5'],
-          ['teal-500', '#f0fdfa'],
-          ['cyan-600', '#ecfeff'],
-          ['amber-500', '#fffbeb'],
-          ['orange-500', '#fff7ed'],
-          ['yellow-500', '#fefce8'],
-          ['red-500', '#fef2f2'],
-          ['pink-500', '#fdf2f8'],
-          ['purple-500', '#faf5ff'],
-          ['gray-500', '#ececee'],
+          ['blue-300', '#eff6ff'],
+          ['indigo-300', '#eef2ff'],
+          ['violet-400', '#f5f3ff'],
+          ['emerald-300', '#ecfdf5'],
+          ['teal-300', '#f0fdfa'],
+          ['cyan-400', '#ecfeff'],
+          ['amber-300', '#fffbeb'],
+          ['orange-300', '#fff7ed'],
+          ['yellow-300', '#fefce8'],
+          ['red-300', '#fef2f2'],
+          ['pink-300', '#fdf2f8'],
+          ['purple-300', '#faf5ff'],
+          ['gray-300', '#f9fafb'],
+          ['stone-300', '#fafaf9'],
+          ['lime-300', '#f7fee7'],
+          ['fuchsia-300', '#fdf4ff'],
+          ['rose-300', '#fff1f2'],
+          ['sky-300', '#f0f9ff'],
         ]);
-        return colorMap.get(firstColor) || '#f0f5fa';
+        return colorMap.get(firstColor) || '#f5f7ff';
       }
     }
     
@@ -99,6 +115,6 @@ export const getVeryLightColor = (hexColor: string): string => {
     
     return `#${lighterR.toString(16).padStart(2, '0')}${lighterG.toString(16).padStart(2, '0')}${lighterB.toString(16).padStart(2, '0')}`;
   } catch (error) {
-    return '#f0f5fa'; // Очень светло-синий цвет по умолчанию
+    return '#f5f7ff'; // Очень светлый по умолчанию
   }
 }; 

@@ -15,6 +15,7 @@ export interface Subgroup {
 export interface Group {
   id: number;
   name: string;
+  gradient?: string;
   subgroups: Subgroup[];
   preparations?: string; // Опциональное поле для группы с препаратами
 }

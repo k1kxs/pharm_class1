@@ -7,24 +7,33 @@ interface ColorPickerModalProps {
   onClose: () => void;
   onColorSelect: (gradient: string) => void;
   currentGradient?: string;
+  title?: string;
 }
 
 const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   isOpen,
   onClose,
   onColorSelect,
-  currentGradient
+  currentGradient,
+  title = "Выбор цвета цикла"
 }) => {
   const gradientOptions = [
-    { value: 'from-blue-500 via-indigo-500 to-violet-600', label: 'Синий' },
-    { value: 'from-emerald-500 via-teal-500 to-cyan-600', label: 'Изумрудный' },
-    { value: 'from-amber-500 via-orange-500 to-yellow-500', label: 'Оранжевый' },
-    { value: 'from-red-500 via-rose-500 to-pink-500', label: 'Красный' },
-    { value: 'from-purple-600 via-violet-600 to-indigo-600', label: 'Фиолетовый' },
-    { value: 'from-sky-500 via-blue-500 to-indigo-500', label: 'Небесный' },
-    { value: 'from-green-500 via-emerald-500 to-teal-500', label: 'Зеленый' },
-    { value: 'from-yellow-500 via-amber-500 to-orange-500', label: 'Желтый' },
-    { value: 'from-pink-500 via-rose-500 to-red-500', label: 'Розовый' }
+    { value: '', label: 'Без цвета' },
+    { value: 'from-blue-300 via-indigo-300 to-violet-400', label: 'Синий' },
+    { value: 'from-emerald-300 via-teal-300 to-cyan-400', label: 'Изумрудный' },
+    { value: 'from-amber-300 via-orange-300 to-yellow-300', label: 'Оранжевый' },
+    { value: 'from-red-300 via-rose-300 to-pink-300', label: 'Красный' },
+    { value: 'from-purple-300 via-violet-300 to-indigo-400', label: 'Фиолетовый' },
+    { value: 'from-sky-300 via-blue-300 to-indigo-300', label: 'Небесный' },
+    { value: 'from-green-300 via-emerald-300 to-teal-300', label: 'Зеленый' },
+    { value: 'from-yellow-300 via-amber-300 to-orange-300', label: 'Желтый' },
+    { value: 'from-pink-300 via-rose-300 to-red-300', label: 'Розовый' },
+    { value: 'from-gray-300 via-gray-400 to-gray-500', label: 'Серый' },
+    { value: 'from-stone-300 via-stone-400 to-stone-500', label: 'Коричневый' },
+    { value: 'from-lime-300 via-lime-400 to-green-400', label: 'Лаймовый' },
+    { value: 'from-fuchsia-300 via-purple-300 to-pink-300', label: 'Фуксия' },
+    { value: 'from-rose-300 via-red-300 to-red-400', label: 'Коралловый' },
+    { value: 'from-teal-300 via-cyan-300 to-sky-300', label: 'Бирюзовый' }
   ];
 
   const handleSelectColor = (value: string) => {
@@ -33,7 +42,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Выбор цвета цикла">
+    <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="space-y-5">
         <div className="flex items-center justify-center mb-6">
           <div className="p-4 bg-indigo-100 text-indigo-600 rounded-full">
@@ -42,17 +51,17 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
         </div>
         
         <p className="text-center text-gray-700 mb-5 max-w-xs mx-auto">
-          Выберите цветовую схему для оформления цикла
+          Выберите цветовую схему или "Без цвета" для стандартного оформления
         </p>
         
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-3">
           {gradientOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => handleSelectColor(option.value)}
               className={`
-                relative h-20 rounded-lg overflow-hidden bg-gradient-to-r ${option.value}
-                flex items-end justify-center p-2 hover:shadow-md transition-all duration-200
+                relative h-20 rounded-lg overflow-hidden ${option.value ? `bg-gradient-to-r ${option.value}` : 'bg-white border border-dashed border-gray-300'}
+                flex flex-col items-center justify-center p-2 hover:shadow-md transition-all duration-200
                 ${currentGradient === option.value ? 'ring-4 ring-offset-2 ring-indigo-300' : 'ring-1 ring-gray-200'}
               `}
               title={option.label}
@@ -62,7 +71,12 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                   <Check size={14} className="text-indigo-600" />
                 </div>
               )}
-              <span className="text-xs font-medium bg-white/90 rounded-md px-2 py-1.5 text-gray-800 shadow-sm">
+              
+              {option.value && (
+                <span className="text-xs font-medium text-gray-800 mb-1">Пример</span>
+              )}
+              
+              <span className={`text-xs font-medium ${option.value ? 'bg-white/80' : 'bg-gray-100'} rounded-md px-2 py-1 text-gray-800 shadow-sm`}>
                 {option.label}
               </span>
             </button>

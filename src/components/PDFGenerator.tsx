@@ -192,7 +192,7 @@ const DrugClassificationPDF: React.FC<{ cycles: Cycle[] }> = ({ cycles }) => {
             <View 
               style={[
                 styles.cycleHeader, 
-                { backgroundColor: getLighterColor(cycle.gradient) }
+                { backgroundColor: cycle.gradient && cycle.gradient !== '' ? getLighterColor(cycle.gradient) : '#f3f4f6' }
               ]}
             >
               <Text>{cycle.name}</Text>
@@ -200,7 +200,10 @@ const DrugClassificationPDF: React.FC<{ cycles: Cycle[] }> = ({ cycles }) => {
             
             {cycle.groups.map((group) => (
               <View key={group.id}>
-                <Text style={styles.groupName}>{group.name}</Text>
+                <Text style={[
+                  styles.groupName,
+                  group.gradient && group.gradient !== '' ? { backgroundColor: getLighterColor(group.gradient) } : {}
+                ]}>{group.name}</Text>
                 
                 {group.preparations && (
                   <View style={styles.preparation}>

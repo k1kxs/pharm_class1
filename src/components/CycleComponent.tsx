@@ -16,7 +16,7 @@ interface CycleComponentProps {
   onStartEditingTitle: (type: string, item: any) => void;
   onFinishEditingTitle: (type: string, id: number) => void;
   onEditingTitleChange: (value: string) => void;
-  onOpenColorPicker: (cycleId: number) => void;
+  onOpenColorPicker: (itemId: number, itemType?: 'cycle' | 'group') => void;
   onDeleteItem: (type: string, id: number) => void;
   onOpenEditor: (type: string, parentId?: number) => void;
   // Обработчики перетаскивания
@@ -73,7 +73,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
     >
       {/* Заголовок цикла */}
       <div 
-        className={`bg-gradient-to-r ${cycle.gradient} text-white p-4 flex justify-between items-center`}
+        className={`bg-gradient-to-r ${cycle.gradient || ''} p-4 flex justify-between items-center text-gray-800 ${!cycle.gradient || cycle.gradient === '' ? 'bg-gray-100' : ''}`}
       >
         <div className="flex-1">
           {isEditingTitle === cycle.id ? (
@@ -87,7 +87,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
               />
               <button
                 onClick={() => onFinishEditingTitle('cycle', cycle.id)}
-                className="p-1.5 bg-white bg-opacity-20 rounded-md text-white hover:bg-opacity-30 transition-all duration-200"
+                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200"
               >
                 <Edit size={16} />
               </button>
@@ -104,7 +104,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                 }
               </div>
               
-              <h2 className="text-xl font-bold flex items-center">
+              <h2 className="text-xl font-bold flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm">
                 {cycle.name}
                 {isEditorMode && (
                   <button
@@ -112,9 +112,9 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                       e.stopPropagation();
                       onStartEditingTitle('cycle', cycle);
                     }}
-                    className="ml-2 p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
                   >
-                    <Edit size={14} />
+                    <Edit size={14} className="text-gray-700" />
                   </button>
                 )}
               </h2>
@@ -124,23 +124,23 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
         {isEditorMode && (
           <div className="flex items-center space-x-2">
             {!isEditingTitle && (
-              <div className="flex items-center p-1 bg-white bg-opacity-10 rounded-md">
-                <MoveVertical size={16} className="text-white opacity-60" />
+              <div className="flex items-center p-1 bg-white rounded-md">
+                <MoveVertical size={16} className="text-gray-700" />
               </div>
             )}
             <button
-              onClick={() => onOpenColorPicker(cycle.id)}
-              className="p-1.5 bg-white bg-opacity-20 rounded-md hover:bg-opacity-30 transition-all duration-200"
+              onClick={() => onOpenColorPicker(cycle.id, 'cycle')}
+              className="p-1.5 bg-white rounded-md hover:bg-gray-200 transition-all duration-200"
               title="Изменить цвет цикла"
             >
-              <Palette size={16} />
+              <Palette size={16} className="text-gray-700" />
             </button>
             <button
               onClick={() => onDeleteItem('cycle', cycle.id)}
-              className="p-1.5 bg-white bg-opacity-20 rounded-md hover:bg-opacity-30 hover:bg-red-400 transition-all duration-200"
+              className="p-1.5 bg-white rounded-md hover:bg-gray-200 hover:text-red-600 transition-all duration-200"
               title="Удалить цикл"
             >
-              <Trash size={16} />
+              <Trash size={16} className="text-gray-700" />
             </button>
           </div>
         )}
@@ -150,7 +150,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       {isSelected && (
         <div className="p-4 scale-in">
           {isEditorMode && (
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex justify-start">
               <button
                 onClick={() => onOpenEditor('group', cycle.id)}
                 className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
@@ -176,6 +176,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   onEditingTitleChange={onEditingTitleChange}
                   onDeleteItem={onDeleteItem}
                   onOpenEditor={(type, parentId) => onOpenEditor(type, parentId)}
+                  onOpenColorPicker={onOpenColorPicker}
                   onGroupDragStart={onGroupDragStart}
                   onGroupDragOver={onGroupDragOver}
                   onGroupDrop={onGroupDrop}

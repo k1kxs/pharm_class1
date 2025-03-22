@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash, Plus, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash, Plus, GripVertical, Palette } from 'lucide-react';
 import { Group, Subgroup } from './types';
 import SubgroupComponent from './SubgroupComponent';
 
@@ -14,6 +14,7 @@ interface GroupComponentProps {
   onEditingTitleChange: (value: string) => void;
   onDeleteItem: (type: string, id: number) => void;
   onOpenEditor: (type: string, parentId?: number) => void;
+  onOpenColorPicker: (itemId: number, itemType?: 'cycle' | 'group') => void;
   // Обработчики перетаскивания групп
   onGroupDragStart: (e: React.DragEvent, group: Group, cycleId: number) => void;
   onGroupDragOver: (e: React.DragEvent, group: Group, cycleId: number) => void;
@@ -32,6 +33,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
   onEditingTitleChange,
   onDeleteItem,
   onOpenEditor,
+  onOpenColorPicker,
   onGroupDragStart,
   onGroupDragOver,
   onGroupDrop,
@@ -48,7 +50,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
       onDrop={(e) => onGroupDrop(e, group, cycleId)}
       onDragEnd={onGroupDragEnd}
     >
-      <div className="p-3.5 bg-gradient-to-r from-gray-50 to-white rounded-t-lg border-b flex justify-between items-center">
+      <div className={`p-3.5 ${group.gradient && group.gradient !== '' ? `bg-gradient-to-r ${group.gradient}` : 'bg-gradient-to-r from-gray-50 to-white'} rounded-t-lg border-b flex justify-between items-center text-gray-800`}>
         <div className="flex-1">
           {isEditingTitle === group.id ? (
             <div className="flex items-center w-full max-w-md">
@@ -61,7 +63,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
               />
               <button
                 onClick={() => onFinishEditingTitle('group', group.id)}
-                className="p-1.5 bg-blue-100 rounded-md text-blue-700 hover:bg-blue-200 transition-all duration-200"
+                className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200"
               >
                 <Edit size={16} />
               </button>
@@ -78,15 +80,15 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                 }
               </div>
               
-              <h3 className="text-lg font-medium flex items-center text-gray-800">
-                {group.name}
+              <h3 className="text-lg font-medium flex items-center px-2 py-1 bg-white/60 rounded-md backdrop-blur-sm">
+                <span className="font-bold">{group.name}</span>
                 {isEditorMode && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartEditingTitle('group', group);
                     }}
-                    className="ml-2 p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="ml-2 p-1.5 bg-white rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100"
                   >
                     <Edit size={14} className="text-gray-600" />
                   </button>
@@ -98,16 +100,23 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
         {isEditorMode && (
           <div className="flex items-center space-x-2">
             {!isEditingTitle && (
-              <div className="cursor-grab active:cursor-grabbing p-1.5 text-gray-400 hover:text-gray-600 transition-colors duration-200">
+              <div className="cursor-grab active:cursor-grabbing p-1.5 text-gray-600 hover:text-gray-800 transition-colors duration-200">
                 <GripVertical size={16} />
               </div>
             )}
             <button
+              onClick={() => onOpenColorPicker(group.id, 'group')}
+              className="p-1.5 bg-white rounded-md hover:bg-gray-200 transition-all duration-200"
+              title="Изменить цвет группы"
+            >
+              <Palette size={16} className="text-gray-600" />
+            </button>
+            <button
               onClick={() => onDeleteItem('group', group.id)}
-              className="p-1.5 bg-gray-100 rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200"
+              className="p-1.5 bg-white rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200"
               title="Удалить группу"
             >
-              <Trash size={16} />
+              <Trash size={16} className="text-gray-600" />
             </button>
           </div>
         )}
@@ -115,54 +124,59 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
       
       {isGroupExpanded && (
         <div className="p-4 bg-white rounded-b-lg scale-in">
-          {/* Препараты группы, если есть */}
-          {group.preparations && (
-            <div className="mb-5 p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-sm font-semibold text-gray-700">Препараты</h4>
-                {isEditorMode && (
+          {/* Горизонтальное расположение содержимого, с названиями слева и препаратами справа */}
+          <div className="flex flex-col space-y-4">
+            {/* Препараты группы, если есть */}
+            <div className="flex flex-row">
+              {/* Блок для кнопки добавления подгруппы */}
+              {isEditorMode && (
+                <div className="w-1/3 pr-4 flex flex-col">
                   <button
-                    onClick={() => onOpenEditor('group', group.id)}
-                    className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                    onClick={() => onOpenEditor('subgroup', group.id)}
+                    className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mb-4 self-end"
                   >
-                    <Edit size={12} className="mr-1.5" />
-                    <span className="font-medium">Редактировать</span>
+                    <Plus size={14} className="mr-1.5" />
+                    <span className="font-medium">Добавить подгруппу</span>
                   </button>
+                </div>
+              )}
+
+              {/* Блок для препаратов группы */}
+              <div className={`${isEditorMode ? 'w-2/3' : 'w-full'}`}>
+                {group.preparations ? (
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      {isEditorMode && (
+                        <button
+                          onClick={() => onOpenEditor('group', group.id)}
+                          className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                        >
+                          <Edit size={12} className="mr-1.5" />
+                          <span className="font-medium">Редактировать</span>
+                        </button>
+                      )}
+                    </div>
+                    <div 
+                      className="text-sm text-gray-700 formatted-preparations prep-container"
+                      dangerouslySetInnerHTML={{ __html: group.preparations }}
+                    />
+                  </div>
+                ) : isEditorMode && (
+                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                    <button
+                      onClick={() => onOpenEditor('group', group.id)}
+                      className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                    >
+                      <Plus size={12} className="mr-1.5" />
+                      <span className="font-medium">Добавить препараты</span>
+                    </button>
+                  </div>
                 )}
               </div>
-              <div 
-                className="text-sm text-gray-700 formatted-preparations prep-container"
-                dangerouslySetInnerHTML={{ __html: group.preparations }}
-              />
             </div>
-          )}
-          
-          {isEditorMode && !group.preparations && (
-            <div className="mb-5 flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <div className="text-sm text-gray-500">Нет данных о препаратах</div>
-              <button
-                onClick={() => onOpenEditor('group', group.id)}
-                className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-              >
-                <Plus size={12} className="mr-1.5" />
-                <span className="font-medium">Добавить препараты</span>
-              </button>
-            </div>
-          )}
-          
-          {isEditorMode && (
-            <div className="mb-4 flex justify-end">
-              <button
-                onClick={() => onOpenEditor('subgroup', group.id)}
-                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-              >
-                <Plus size={14} className="mr-1.5" />
-                <span className="font-medium">Добавить подгруппу</span>
-              </button>
-            </div>
-          )}
-          
-          <div className="space-y-3">
+            
+            {/* Подгруппы */}
             {group.subgroups && group.subgroups.length > 0 ? (
               group.subgroups.map((subgroup) => (
                 <SubgroupComponent

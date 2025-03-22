@@ -47,13 +47,29 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [dragOverSubgroup, setDragOverSubgroup] = useState<DraggedSubgroup | null>(null);
   const [draggedCategory, setDraggedCategory] = useState<DraggedCategory | null>(null);
   
+  // Состояния для палитры цветов
+  const [itemType, setItemType] = useState<'cycle' | 'group'>('cycle');
+  
   // Загрузка данных из API при монтировании компонента
   useEffect(() => {
     const fetchData = async () => {
       try {
         const result = await dataAPI.getData();
-        if (result.cycles) {
+        if (result.cycles && result.cycles.length > 0) {
           setCycles(result.cycles);
+        } else {
+          // Если в localStorage нет данных, загружаем исходные данные из файла
+          try {
+            const response = await fetch('/initial-data.json');
+            const initialData = await response.json();
+            if (initialData.cycles && initialData.cycles.length > 0) {
+              setCycles(initialData.cycles);
+              // Сохраняем исходные данные в localStorage
+              await dataAPI.saveData(initialData.cycles);
+            }
+          } catch (error) {
+            console.error('Ошибка при загрузке исходных данных:', error);
+          }
         }
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
@@ -465,8 +481,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Открытие палитры цветов
-  const openColorPicker = (cycleId: number) => {
-    setSelectedCycleId(cycleId);
+  const openColorPicker = (itemId: number, itemType: 'cycle' | 'group' = 'cycle') => {
+    setSelectedCycleId(itemId);
+    setItemType(itemType);
     setColorPickerOpen(true);
   }
   
@@ -475,18 +492,32 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     setColorPickerOpen(false);
   }
   
-  // Обработчик изменения градиента цикла
+  // Обработчик изменения градиента
   const handleColorSelect = (gradient: string) => {
     if (selectedCycleId === null) return;
     
-    const newCycles = cycles.map(cycle => {
-      if (cycle.id === selectedCycleId) {
-        return { ...cycle, gradient }
-      }
-      return cycle;
-    });
-    
-    setCycles(newCycles);
+    if (itemType === 'cycle') {
+      const newCycles = cycles.map(cycle => {
+        if (cycle.id === selectedCycleId) {
+          return { ...cycle, gradient }
+        }
+        return cycle;
+      });
+      
+      setCycles(newCycles);
+    } else if (itemType === 'group') {
+      const newCycles = cycles.map(cycle => {
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === selectedCycleId) {
+            return { ...group, gradient }
+          }
+          return group;
+        });
+        return { ...cycle, groups: updatedGroups };
+      });
+      
+      setCycles(newCycles);
+    }
   }
   
   // Обработчик переключения состояния цикла (свернуть/развернуть)
@@ -817,6 +848,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     draggedSubgroup,
     dragOverSubgroup,
     draggedCategory,
+    itemType,
     
     // Действия
     setCycles,

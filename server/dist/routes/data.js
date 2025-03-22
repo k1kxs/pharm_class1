@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const DrugClassification_1 = __importDefault(require("../models/DrugClassification"));
 const auth_1 = require("../middleware/auth");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const router = express_1.default.Router();
 // Получение данных классификации для текущего пользователя
 router.get('/', async (req, res) => {
@@ -112,6 +114,30 @@ router.post('/import', auth_1.verifyAdmin, async (req, res) => {
     catch (error) {
         console.error('Ошибка при импорте данных классификации:', error);
         res.status(500).json({ message: 'Ошибка сервера при импорте данных классификации' });
+    }
+});
+// Сохранение данных в файл initial-data.json
+router.post('/save-to-file', async (req, res) => {
+    try {
+        const { cycles } = req.body;
+        // Проверка наличия данных
+        if (!cycles || !Array.isArray(cycles)) {
+            return res.status(400).json({ message: 'Неверный формат данных' });
+        }
+        // Путь к файлу initial-data.json в директории public
+        const filePath = path_1.default.resolve(__dirname, '../../public/initial-data.json');
+        // Создаем объект с данными для сохранения
+        const dataToSave = { cycles };
+        // Записываем данные в файл
+        fs_1.default.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
+        res.json({
+            message: 'Данные успешно сохранены в файл initial-data.json',
+            path: filePath
+        });
+    }
+    catch (error) {
+        console.error('Ошибка при сохранении данных в файл:', error);
+        res.status(500).json({ message: 'Ошибка сервера при сохранении данных в файл' });
     }
 });
 exports.default = router;
