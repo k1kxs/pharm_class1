@@ -1,21 +1,22 @@
 import axios from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Базовый URL API (из переменных окружения или по умолчанию)
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// Создаем экземпляр axios с базовым URL
+// Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
 // Интерцептор для добавления токена к запросам
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -32,8 +33,7 @@ api.interceptors.response.use(
       // Проверяем, что это не запрос на вход, чтобы избежать циклических редиректов
       if (!error.config.url.includes('/auth/login')) {
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.reload();
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
