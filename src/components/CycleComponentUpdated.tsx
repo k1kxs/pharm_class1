@@ -1,10 +1,11 @@
 import React from 'react';
-import { ChevronDown, ChevronRight, Edit, Trash, Palette, Plus, MoveVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash, Palette, Plus, MoveVertical, TableIcon } from 'lucide-react';
 import { Cycle, Group } from './types';
 import GroupComponent from './GroupComponent';
 import { useDrugClassification } from './context/DrugClassificationContext';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import GroupTableActions from './GroupTableActions';
 
 interface CycleComponentProps {
   cycle: Cycle;
@@ -20,9 +21,10 @@ interface CycleComponentProps {
   onStartEditingTitle: () => void;
   onFinishEditingTitle: () => void;
   onEditingTitleChange: (value: string) => void;
-  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
+  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   handleDelete: (type: string, id: number) => void;
-  onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group') => void;
+  onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
+  onTableAdd: () => void;
   // Обработчики перетаскивания
   onDragStart: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDragOver: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
@@ -51,6 +53,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
   openEditModal,
   handleDelete,
   onColorPickerOpen,
+  onTableAdd,
   onDragStart,
   onDragOver,
   onDrop,
@@ -179,15 +182,11 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       {isExpanded && (
         <div className="p-4 scale-in">
           {isEditorMode && (
-            <div className="mb-4 flex justify-start">
-              <button
-                onClick={() => openEditModal('group', cycle.id)}
-                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-              >
-                <Plus size={14} className="mr-1.5" />
-                <span className="font-medium">Добавить группу</span>
-              </button>
-            </div>
+            <GroupTableActions 
+              cycleId={cycle.id}
+              onGroupAdd={() => openEditModal('group', cycle.id)}
+              onTableAdd={onTableAdd}
+            />
           )}
           
           {cycle.groups && cycle.groups.length > 0 ? (
@@ -198,20 +197,25 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   group={group}
                   cycleId={cycle.id}
                   isEditorMode={isEditorMode}
-                  onDeleteItem={handleDelete}
-                  onOpenEditor={openEditModal}
-                  onOpenColorPicker={onColorPickerOpen}
-                  onGroupDragStart={onGroupDragStart}
-                  onGroupDragOver={onGroupDragOver}
-                  onGroupDrop={onGroupDrop}
-                  onGroupDragEnd={onGroupDragEnd}
+                  isEditingTitle={isEditingTitle === group.id}
+                  editingTitleValue={editingTitleValue}
+                  onStartEditingTitle={() => onStartEditingTitle('group', group)}
+                  onFinishEditingTitle={() => onFinishEditingTitle('group', group.id)}
+                  onEditingTitleChange={onEditingTitleChange}
+                  openEditModal={openEditModal}
+                  handleDelete={handleDelete}
+                  onColorPickerOpen={onColorPickerOpen}
                   searchQuery={searchQuery}
+                  onDragStart={(e) => onGroupDragStart(e, group, cycle.id)}
+                  onDragOver={(e) => onGroupDragOver(e, group, cycle.id)}
+                  onDrop={(e) => onGroupDrop(e, group, cycle.id)}
+                  onDragEnd={onGroupDragEnd}
                 />
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500 italic">
-              Нет групп в этом цикле
+            <div className="text-center py-8 text-gray-400">
+              {isEditorMode ? 'Нажмите "Добавить группу" для создания группы препаратов' : 'В данном цикле еще нет групп препаратов'}
             </div>
           )}
         </div>

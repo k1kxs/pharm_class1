@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Search, Download, Lock, Save, X, Plus, Clock, FileText } from 'lucide-react';
+import { Search, Download, Lock, Save, X, Plus, Clock, FileText, Table as TableIcon } from 'lucide-react';
 
 // Импортируем хук для использования контекста
 import { useDrugClassification } from './context/DrugClassificationContext';
@@ -11,6 +11,8 @@ import PasswordModal from './PasswordModal';
 import EditModal from './EditModal';
 import ExportModal from './ExportModal';
 import ColorPickerModal from './ColorPickerModal';
+import TableModal from './TableModal';
+import TableComponent from './TableComponent';
 
 // Импортируем компоненты для drag-and-drop
 import { DndContext, closestCenter } from '@dnd-kit/core';
@@ -21,6 +23,7 @@ const ModernDrugClassification: React.FC = () => {
   const { 
     cycles, 
     selectedCycles,
+    tables,
     passwordModalOpen,
     passwordError,
     isEditorMode,
@@ -31,13 +34,18 @@ const ModernDrugClassification: React.FC = () => {
     parentForEdit,
     exportModalOpen,
     colorPickerOpen,
+    tableModalOpen,
     selectedCycleId,
+    selectedTableId,
     isEditingTitle,
     editingTitleValue,
     searchQuery,
     draggedCycle,
     dragOverCycle,
     itemType,
+    isLoading,
+    isInitialDataLoaded,
+    isSaving,
     
     // Методы
     toggleCycle,
@@ -75,6 +83,12 @@ const ModernDrugClassification: React.FC = () => {
     setIsEditorMode,
     setPasswordModalOpen,
     setPasswordError,
+    reloadData,
+    // Методы для таблиц
+    openTableModal,
+    closeTableModal,
+    updateTableCell,
+    deleteTable,
   } = useDrugClassification();
   
   // Реф для генерации PDF
@@ -150,18 +164,36 @@ const ModernDrugClassification: React.FC = () => {
         isOpen={colorPickerOpen}
         onClose={closeColorPicker}
         onColorSelect={handleColorSelect}
-        currentGradient={cycles.find(c => c.id === selectedCycleId)?.gradient || 
-          cycles.flatMap(c => c.groups).find(g => g.id === selectedCycleId)?.gradient}
-        title={itemType === 'cycle' ? 'Выбор цвета цикла' : 'Выбор цвета группы'}
+        currentGradient={
+          itemType === 'table' 
+            ? tables.find(t => t.id === selectedTableId)?.gradient 
+            : cycles.find(c => c.id === selectedCycleId)?.gradient || 
+              cycles.flatMap(c => c.groups).find(g => g.id === selectedCycleId)?.gradient
+        }
+        title={
+          itemType === 'table' 
+            ? 'Выбор цвета шапки таблицы' 
+            : itemType === 'cycle' 
+              ? 'Выбор цвета цикла' 
+              : 'Выбор цвета группы'
+        }
+      />
+      
+      <TableModal
+        isOpen={tableModalOpen}
+        onClose={closeTableModal}
       />
       
       {/* Заголовок с режимом редактирования */}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap justify-between items-center">
-            <div className="flex-1 mb-2 sm:mb-0">
-              <div className="text-sm text-gray-500 font-medium">ФГБОУ ВО ОрГМУ Минздрава России</div>
-              <div className="text-xs text-gray-400">Кафедра фармакологии</div>
+            <div className="flex-1 mb-2 sm:mb-0 flex items-center">
+              <img src="/logo.png" alt="ОрГМУ" className="h-12 w-auto mr-4" />
+              <div>
+                <div className="text-sm text-gray-500 font-medium">ФГБОУ ВО ОрГМУ Минздрава России</div>
+                <div className="text-xs text-gray-400">Кафедра фармакологии</div>
+              </div>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -191,21 +223,61 @@ const ModernDrugClassification: React.FC = () => {
                 </button>
               )}
               
-              <button
-                onClick={openExportModal}
-                className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-full hover:bg-purple-100 transition-all duration-200 flex items-center shadow-sm"
-              >
-                <Download size={14} className="mr-1.5" />
-                <span className="hidden sm:inline text-sm font-medium">Экспорт</span>
-              </button>
+              <div className="export-button-wrapper" onClick={openExportModal}>
+                <button className="export-button" title="Экспорт в PDF">
+                  <Download size={16} className="download-icon" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </header>
       
       {/* Заголовок и поиск */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white transition-colors duration-300">
-        <div className="container mx-auto px-4 py-12">
+      <div className="bg-header-wave relative overflow-hidden text-white py-12" style={{
+        position: 'relative',
+        boxShadow: '0px 8px 28px -9px rgba(0,0,0,0.45)',
+        overflow: 'hidden'
+      }}>
+        {/* Анимированные волны */}
+        <div className="wave" style={{
+          position: 'absolute',
+          width: '1000px',
+          height: '1000px',
+          opacity: 0.8,
+          left: '-20%',
+          top: '-50%',
+          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+          borderRadius: '43%',
+          animation: 'wave 55s infinite linear',
+          zIndex: 0
+        }}></div>
+        <div className="wave" style={{
+          position: 'absolute',
+          width: '1200px',
+          height: '1200px',
+          opacity: 0.7,
+          right: '-20%',
+          top: '-70%',
+          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+          borderRadius: '47%',
+          animation: 'wave 50s infinite linear',
+          zIndex: 0
+        }}></div>
+        <div className="wave" style={{
+          position: 'absolute',
+          width: '1100px',
+          height: '1100px',
+          opacity: 0.6,
+          left: '10%',
+          top: '-60%',
+          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+          borderRadius: '45%',
+          animation: 'wave 45s infinite linear',
+          zIndex: 0
+        }}></div>
+        
+        <div className="container mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
           <h1 className="text-3xl md:text-4xl font-bold mb-8 tracking-tight text-center">
             Классификация лекарственных средств
           </h1>
@@ -221,27 +293,64 @@ const ModernDrugClassification: React.FC = () => {
                 className="block w-full pl-12 pr-12 py-3.5 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-shadow duration-200 font-medium shadow-lg"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={isLoading}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                  disabled={isLoading}
                 >
                   <X size={18} className="text-gray-500 hover:text-gray-700" />
                 </button>
               )}
             </div>
+            
+            {isSaving && (
+              <div className="mt-2 text-center text-white text-sm bg-blue-500 bg-opacity-50 py-1 px-3 rounded-full inline-block mx-auto">
+                Сохранение изменений...
+              </div>
+            )}
           </div>
         </div>
       </div>
       
+      {/* Определяем анимацию в глобальных стилях */}
+      <style>
+        {`
+          @keyframes wave {
+            0% {
+              transform: rotate(0deg);
+            }
+            
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+          
+          .bg-header-wave {
+            background-color: #5b42f3;
+          }
+        `}
+      </style>
+      
       {/* Основное содержимое */}
       <main className="container mx-auto px-4 py-8" ref={pdfRef}>
         {isEditorMode && (
-          <div className="mb-6 flex justify-end">
+          <div className="mb-6 flex justify-between">
+            <button
+              onClick={reloadData}
+              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-200 flex items-center shadow-sm"
+              disabled={isLoading}
+            >
+              <Clock size={18} className="mr-2" />
+              <span className="font-medium">Обновить данные</span>
+            </button>
+            
             <button
               onClick={() => openEditModal('cycle')}
               className="px-4 py-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-200 flex items-center shadow-sm"
+              disabled={isLoading}
             >
               <Plus size={18} className="mr-2" />
               <span className="font-medium">Добавить цикл</span>
@@ -249,66 +358,89 @@ const ModernDrugClassification: React.FC = () => {
           </div>
         )}
         
-        <div className="space-y-8">
-          {hasResults ? (
-            <DndContext 
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext 
-                items={cycles.map(cycle => cycle.id)}
-                strategy={verticalListSortingStrategy}
-              >
+        {/* Индикатор загрузки */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600 text-lg font-medium">Загрузка данных о препаратах...</p>
+          </div>
+        )}
+        
+        {/* Нет результатов поиска */}
+        {!isLoading && searchQuery.trim() !== '' && cycles.length === 0 && tables.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-5xl mb-4">🔍</div>
+            <h2 className="text-2xl font-bold text-gray-700 mb-2">Ничего не найдено</h2>
+            <p className="text-gray-500 max-w-md mx-auto">
+              По запросу "{searchQuery}" не найдено ни одного препарата, группы или таблицы. Попробуйте изменить запрос.
+            </p>
+          </div>
+        )}
+        
+        {/* Отображение таблиц */}
+        {!isLoading && tables.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-700 mb-4">Таблицы</h2>
+            <div className="space-y-5">
+              {tables.map((table) => (
+                <TableComponent
+                  key={table.id}
+                  table={table}
+                  isEditorMode={isEditorMode}
+                  onEdit={() => openEditModal('table', table.id)}
+                  onDelete={() => handleDelete('table', table.id)}
+                  onColorChange={() => openColorPicker(table.id, 'table')}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Список циклов */}
+        {!isLoading && cycles.length > 0 && (
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={cycles.map(c => c.id.toString())} strategy={verticalListSortingStrategy}>
+              <div className="space-y-8">
                 {cycles.map((cycle) => (
                   <CycleComponent
                     key={cycle.id}
                     cycle={cycle}
-                    isSelected={selectedCycles.includes(cycle.id)}
+                    isExpanded={selectedCycles.includes(cycle.id)}
+                    onToggle={() => toggleCycle(cycle.id)}
                     isEditorMode={isEditorMode}
-                    isEditingTitle={isEditingTitle}
+                    onEdit={() => openEditModal('cycle', cycle.id)}
+                    onDelete={() => handleDelete('cycle', cycle.id)}
+                    onColorChange={() => openColorPicker(cycle.id, 'cycle')}
+                    isEditingTitle={isEditingTitle === cycle.id}
                     editingTitleValue={editingTitleValue}
-                    draggedCycle={draggedCycle}
-                    dragOverCycle={dragOverCycle}
-                    onToggleCycle={toggleCycle}
-                    onStartEditingTitle={startEditingTitle}
-                    onFinishEditingTitle={finishEditingTitle}
+                    onStartEditingTitle={() => startEditingTitle('cycle', cycle)}
+                    onFinishEditingTitle={() => finishEditingTitle('cycle', cycle.id)}
                     onEditingTitleChange={setEditingTitleValue}
-                    onOpenColorPicker={openColorPicker}
-                    onDeleteItem={handleDelete}
-                    onOpenEditor={(type, parentId) => openEditModal(type as 'cycle' | 'group' | 'subgroup' | 'category', parentId)}
-                    onCycleDragStart={handleCycleDragStart}
-                    onCycleDragOver={handleCycleDragOver}
-                    onCycleDrop={handleCycleDrop}
-                    onCycleDragEnd={handleCycleDragEnd}
+                    searchQuery={searchQuery}
+                    openEditModal={openEditModal}
+                    handleDelete={handleDelete}
+                    onColorPickerOpen={openColorPicker}
+                    onTableAdd={openTableModal}
+                    onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragStart(e, cycle)}
+                    onDragOver={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragOver(e, cycle)}
+                    onDrop={(e: React.DragEvent<HTMLDivElement>) => handleCycleDrop(e, cycle)}
+                    onDragEnd={handleCycleDragEnd}
                     onGroupDragStart={handleGroupDragStart}
                     onGroupDragOver={handleGroupDragOver}
                     onGroupDrop={handleGroupDrop}
                     onGroupDragEnd={handleGroupDragEnd}
                   />
                 ))}
-              </SortableContext>
-            </DndContext>
-          ) : hasSearchResults ? (
-            <div className="text-center py-24 bg-white rounded-xl shadow-sm">
-              <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl text-gray-600 font-medium">Поиск не дал результатов</h3>
-              <p className="text-gray-500 mt-2">
-                Попробуйте изменить поисковый запрос
-              </p>
-            </div>
-          ) : (
-            <div className="text-center py-24 bg-white rounded-xl shadow-sm">
-              <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl text-gray-600 font-medium">Данные отсутствуют</h3>
-              <p className="text-gray-500 mt-2">
-                {isEditorMode ? 'Добавьте новый цикл с помощью кнопки выше' : 'В базе данных пока нет информации'}
-              </p>
-            </div>
-          )}
-        </div>
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
       </main>
       
       {/* Подвал */}

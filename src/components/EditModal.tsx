@@ -22,11 +22,12 @@ const EditModal: React.FC<EditModalProps> = ({
   const modules = {
     toolbar: [
       ['bold', 'italic', 'underline'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link']
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+      ['link'],
+      ['clean']
     ],
     clipboard: {
-      // Разрешаем вставку всего HTML
+      // Позволяем сохранять форматирование при вставке
       matchVisual: false
     }
   };
@@ -57,12 +58,13 @@ const EditModal: React.FC<EditModalProps> = ({
       setName(initialData.name || '');
       
       // Проверяем наличие препаратов для редактирования
-      if (type === 'group' || type === 'category') {
+      if (type === 'category' || type === 'subgroup' || (type === 'group' && initialData.id)) {
         console.log('Загружаем препараты для редактирования:', initialData.preparations);
+        // Убеждаемся, что данные препаратов существуют перед установкой
         setPreparations(initialData.preparations || '');
       }
       
-      if (type === 'cycle' && initialData.gradient) {
+      if ((type === 'cycle' || type === 'group' || type === 'table') && initialData.gradient) {
         setGradient(initialData.gradient);
       }
     } else {
@@ -75,18 +77,34 @@ const EditModal: React.FC<EditModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Проверка и очистка HTML-контента перед сохранением
+    // Но сохраняем форматирование и структуру списков
+    const sanitizedPreparations = preparations ? preparations.trim() : '';
+    
+    // Проверка на наличие тега ol в содержимом
+    console.log('Содержит ли numlist:', sanitizedPreparations.includes('<ol>'));
+    
     const data: any = {
-      name,
-      preparations: type === 'group' || type === 'category' ? preparations : undefined
+      // Для редактирования препаратов группы сохраняем текущее название
+      name: (type === 'group' && initialData?.id) ? initialData.name : name
     };
+    
+    // Добавляем препараты только для категорий, подгрупп и существующих групп
+    if (type === 'category' || type === 'subgroup' || (type === 'group' && initialData?.id)) {
+      data.preparations = sanitizedPreparations;
+    }
     
     if (type === 'cycle') {
       data.gradient = gradient;
       data.groups = [];
     } else if (type === 'group') {
+      // Для редактирования препаратов группы сохраняем текущий градиент
+      data.gradient = (initialData?.id) ? initialData.gradient : gradient;
       data.subgroups = [];
     } else if (type === 'subgroup') {
       data.categories = [];
+    } else if (type === 'table') {
+      data.gradient = gradient;
     }
     
     // Если есть начальные данные, сохраняем ID для обновления
@@ -102,31 +120,44 @@ const EditModal: React.FC<EditModalProps> = ({
   // При изменении текста препаратов
   const handlePreparationsChange = (content: string) => {
     console.log('Текст препаратов изменен:', content);
-    setPreparations(content);
+    // Проверяем, является ли контент пустым редактором
+    const isEmptyEditor = content === '<p><br></p>';
+    
+    // Сохраняем HTML без изменений, чтобы сохранить форматирование и нумерацию
+    setPreparations(isEmptyEditor ? '' : content);
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Название
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 shadow-sm"
-            placeholder="Введите название..."
-            required
-          />
-        </div>
+        {/* Название показываем не для редактирования препаратов существующей группы */}
+        {!(type === 'group' && initialData?.id) && (
+          <div className="space-y-2">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              Название
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 shadow-sm"
+              placeholder="Введите название..."
+              required={!(type === 'group' && initialData?.id)}
+            />
+          </div>
+        )}
         
-        {type === 'cycle' && (
+        {/* Выбор цвета показываем не для редактирования препаратов существующей группы */}
+        {(type === 'cycle' || (type === 'group' && !initialData?.id) || type === 'table') && (
           <div className="space-y-2">
             <label htmlFor="gradient" className="block text-sm font-medium text-gray-700 flex items-center">
-              <Palette size={16} className="mr-1" /> Цвет цикла
+              <Palette size={16} className="mr-1" /> 
+              Цвет {
+                type === 'cycle' ? 'цикла' : 
+                type === 'table' ? 'шапки таблицы' : 
+                'группы'
+              }
             </label>
             <select
               id="gradient"
@@ -144,18 +175,90 @@ const EditModal: React.FC<EditModalProps> = ({
           </div>
         )}
         
-        {(type === 'group' || type === 'category') && (
+        {(type === 'category' || type === 'subgroup' || (type === 'group' && initialData?.id)) && (
           <div className="space-y-2">
             <label htmlFor="preparations" className="block text-sm font-medium text-gray-700">
               Препараты
             </label>
             <div className="quill-container border rounded-md overflow-hidden shadow-sm">
+              <style dangerouslySetInnerHTML={{ __html: `
+                /* Базовые стили для редактора */
+                .ql-editor {
+                  padding: 1rem !important;
+                }
+                /* Одинаковый отступ для всех элементов */
+                .ql-editor p,
+                .ql-editor ol, 
+                .ql-editor ul {
+                  padding-left: 0 !important;
+                  margin-left: 0 !important;
+                  margin-bottom: 0.5rem !important;
+                  text-indent: 0 !important;
+                }
+                /* Единые стили для всех элементов списка */
+                .ql-editor ol li, 
+                .ql-editor ul li {
+                  position: relative !important;
+                  padding-left: 1.2rem !important;
+                  margin-left: 0 !important;
+                  counter-increment: list-item !important;
+                  text-indent: 0 !important;
+                }
+                /* Полностью отключаем встроенные маркеры Quill */
+                .ql-editor li:before {
+                  margin: 0 !important;
+                  width: 0 !important;
+                  display: none !important;
+                  content: none !important;
+                }
+                /* Унифицированные стили для маркеров списков */
+                .ql-editor ul > li:before,
+                .ql-editor ol > li:before {
+                  display: block !important;
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 1.2rem !important;
+                  text-align: left !important;
+                }
+                /* Маркер для ul */
+                .ql-editor ul > li:before {
+                  content: "•" !important;
+                  color: #3b82f6 !important;
+                }
+                /* Маркер для ol */
+                .ql-editor ol {
+                  counter-reset: list-item !important;
+                }
+                .ql-editor ol > li:before {
+                  content: counter(list-item) "." !important;
+                  font-weight: 500 !important;
+                }
+                /* Убираем отступы для вложенных списков */
+                .ql-editor .ql-indent-1,
+                .ql-editor .ql-indent-2,
+                .ql-editor .ql-indent-3 {
+                  padding-left: 0 !important;
+                  margin-left: 0 !important;
+                }
+                /* Принудительно убираем любые вставленные стили */
+                .ql-editor * {
+                  margin-left: 0 !important;
+                }
+                /* Отключаем дополнительные отступы для других стилей */
+                .ql-editor [class*="ql-indent"] {
+                  padding-left: 0 !important;
+                  margin-left: 0 !important;
+                }
+              `}} />
               <ReactQuill
                 value={preparations}
                 onChange={handlePreparationsChange}
                 modules={modules}
                 formats={formats}
                 placeholder="Введите список препаратов..."
+                theme="snow"
+                className="custom-quill-editor"
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">

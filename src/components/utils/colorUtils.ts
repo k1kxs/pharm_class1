@@ -3,21 +3,21 @@ import { ColorMap } from '../types';
 // Карта соответствия градиентов к цветам
 export const gradientColors: ColorMap = {
   '': '#ffffff', // Для опции "Без цвета"
-  'from-blue-300 via-indigo-300 to-violet-400': '#a5b4fc',
-  'from-emerald-300 via-teal-300 to-cyan-400': '#6ee7b7',
-  'from-amber-300 via-orange-300 to-yellow-300': '#fcd34d',
-  'from-red-300 via-rose-300 to-pink-300': '#fda4af',
-  'from-purple-300 via-violet-300 to-indigo-400': '#c4b5fd',
-  'from-sky-300 via-blue-300 to-indigo-300': '#7dd3fc',
-  'from-green-300 via-emerald-300 to-teal-300': '#86efac',
-  'from-yellow-300 via-amber-300 to-orange-300': '#fef08a',
-  'from-pink-300 via-rose-300 to-red-300': '#f9a8d4',
-  'from-gray-300 via-gray-400 to-gray-500': '#d1d5db',
-  'from-stone-300 via-stone-400 to-stone-500': '#d6d3d1',
-  'from-lime-300 via-lime-400 to-green-400': '#bef264',
-  'from-fuchsia-300 via-purple-300 to-pink-300': '#f0abfc',
-  'from-rose-300 via-red-300 to-red-400': '#fecdd3',
-  'from-teal-300 via-cyan-300 to-sky-300': '#5eead4'
+  'from-blue-500 via-indigo-500 to-violet-600': '#6366f1',
+  'from-emerald-500 via-teal-500 to-cyan-600': '#10b981',
+  'from-amber-500 via-orange-500 to-yellow-500': '#f59e0b',
+  'from-red-500 via-rose-500 to-pink-500': '#ef4444',
+  'from-purple-500 via-violet-500 to-indigo-600': '#8b5cf6',
+  'from-sky-500 via-blue-500 to-indigo-500': '#0ea5e9',
+  'from-green-500 via-emerald-500 to-teal-500': '#22c55e',
+  'from-yellow-500 via-amber-500 to-orange-500': '#eab308',
+  'from-pink-500 via-rose-500 to-red-500': '#ec4899',
+  'from-gray-500 via-gray-600 to-gray-700': '#6b7280',
+  'from-stone-500 via-stone-600 to-stone-700': '#78716c',
+  'from-lime-500 via-lime-600 to-green-600': '#84cc16',
+  'from-fuchsia-500 via-purple-500 to-pink-500': '#d946ef',
+  'from-rose-500 via-red-500 to-red-600': '#f43f5e',
+  'from-teal-500 via-cyan-500 to-sky-500': '#14b8a6'
 };
 
 // Функция для получения более светлого цвета для заголовков таблиц

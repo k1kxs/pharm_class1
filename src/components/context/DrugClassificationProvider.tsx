@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import DrugClassificationContext, { DrugClassificationContextType } from './DrugClassificationContext';
-import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory } from '../types';
+import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory, Table, TableRow, TableCell } from '../types';
 import { textContainsQuery } from '../utils/textUtils';
 import PDFGenerator from '../PDFGenerator';
 import { useAuth } from './AuthProvider';
@@ -8,6 +8,7 @@ import { dataAPI } from '../../services/api';
 // Импорт компонентов из @dnd-kit
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
+import { debounce } from 'lodash';
 
 interface DrugClassificationProviderProps {
   children: React.ReactNode;
@@ -20,13 +21,19 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   // Состояния для хранения данных
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [selectedCycles, setSelectedCycles] = useState<number[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  
+  // Состояния для отслеживания загрузки данных
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Состояния для модальных окон
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isEditorMode, setIsEditorMode] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editType, setEditType] = useState<'cycle' | 'group' | 'subgroup' | 'category'>('cycle');
+  const [editType, setEditType] = useState<'cycle' | 'group' | 'subgroup' | 'category' | 'table'>('cycle');
   const [editTitle, setEditTitle] = useState('');
   const [editData, setEditData] = useState<any>(null);
   const [parentForEdit, setParentForEdit] = useState<number | null>(null);
@@ -51,7 +58,15 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [draggedCategory, setDraggedCategory] = useState<DraggedCategory | null>(null);
   
   // Состояния для палитры цветов
-  const [itemType, setItemType] = useState<'cycle' | 'group'>('cycle');
+  const [itemType, setItemType] = useState<'cycle' | 'group' | 'table'>('cycle');
+  
+  // Состояния для создания таблиц
+  const [tableModalOpen, setTableModalOpen] = useState<boolean>(false);
+  const [newTableName, setNewTableName] = useState<string>('');
+  const [newTableGradient, setNewTableGradient] = useState<string>('from-blue-500 via-indigo-500 to-violet-600');
+  const [newTableRows, setNewTableRows] = useState<number>(3);
+  const [newTableColumns, setNewTableColumns] = useState<number>(3);
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   
   // Конфигурация сенсоров DnD (для мыши и тач-устройств)
   const sensors = useSensors(
@@ -71,49 +86,112 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     })
   );
   
-  // Загрузка данных из API при монтировании компонента
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await dataAPI.getData();
-        if (result.cycles && result.cycles.length > 0) {
-          setCycles(result.cycles);
-        } else {
-          // Если в localStorage нет данных, загружаем исходные данные из файла
-          try {
-            const response = await fetch('/initial-data.json');
-            const initialData = await response.json();
-            if (initialData.cycles && initialData.cycles.length > 0) {
-              setCycles(initialData.cycles);
-              // Сохраняем исходные данные в localStorage
-              await dataAPI.saveData(initialData.cycles);
-            }
-          } catch (error) {
-            console.error('Ошибка при загрузке исходных данных:', error);
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка при загрузке данных:', error);
-      }
-    }
-    
-    fetchData();
-  }, []);
-  
-  // Сохранение данных через API при изменении
-  useEffect(() => {
-    if (cycles.length > 0) {
-      const saveData = async () => {
-        try {
-          await dataAPI.saveData(cycles);
-        } catch (error) {
-          console.error('Ошибка при сохранении данных:', error);
+  // Функция для загрузки данных, выделенная для переиспользования
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Проверяем наличие кэшированных данных в sessionStorage
+      const cachedData = sessionStorage.getItem('drug_classification_cache');
+      const cacheTimestamp = sessionStorage.getItem('drug_classification_cache_timestamp');
+      const now = new Date().getTime();
+      
+      // Используем кэш, если он существует и не устарел (30 минут)
+      if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 30 * 60 * 1000) {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData.cycles && parsedData.cycles.length > 0) {
+          console.log('Загрузка данных из кэша');
+          setCycles(parsedData.cycles);
+          setTables(parsedData.tables || []);
+          setIsInitialDataLoaded(true);
+          setIsLoading(false);
+          return;
         }
       }
       
-      saveData();
+      // Если кэша нет или он устарел, получаем данные из localStorage
+      const result = await dataAPI.getData();
+      if (result.cycles && result.cycles.length > 0) {
+        // Кэшируем полученные данные
+        sessionStorage.setItem('drug_classification_cache', JSON.stringify(result));
+        sessionStorage.setItem('drug_classification_cache_timestamp', now.toString());
+        setCycles(result.cycles);
+        setTables(result.tables || []);
+        setIsInitialDataLoaded(true);
+      } else {
+        // Если в localStorage нет данных, загружаем исходные данные из файла
+        try {
+          console.log('Загрузка исходных данных из файла');
+          const response = await fetch('/initial-data.json');
+          const initialData = await response.json();
+          if (initialData.cycles && initialData.cycles.length > 0) {
+            setCycles(initialData.cycles);
+            setTables(initialData.tables || []);
+            setIsInitialDataLoaded(true);
+            
+            // Параллельное сохранение данных в localStorage и кэш
+            await Promise.all([
+              dataAPI.saveData(initialData.cycles),
+              new Promise<void>((resolve) => {
+                sessionStorage.setItem('drug_classification_cache', JSON.stringify(initialData));
+                sessionStorage.setItem('drug_classification_cache_timestamp', now.toString());
+                resolve();
+              })
+            ]);
+          }
+        } catch (error) {
+          console.error('Ошибка при загрузке исходных данных:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [cycles]);
+  };
+
+  // Используем функцию loadData в useEffect
+  useEffect(() => {
+    loadData();
+  }, []);
+  
+  // Метод для принудительного обновления данных
+  const reloadData = async () => {
+    // Очищаем кэши перед загрузкой
+    sessionStorage.removeItem('drug_classification_cache');
+    dataAPI.clearCache();
+    await loadData();
+  };
+  
+  // Оптимизированное сохранение данных через API при изменении
+  useEffect(() => {
+    if (cycles.length > 0 && isInitialDataLoaded) {
+      // Используем debounce для сохранения данных
+      let saveTimeout: NodeJS.Timeout | null = null;
+      
+      const saveData = async () => {
+        try {
+          setIsSaving(true);
+          await dataAPI.saveData(cycles);
+          // Обновляем кэш после сохранения
+          sessionStorage.setItem('drug_classification_cache', JSON.stringify({ cycles }));
+          sessionStorage.setItem('drug_classification_cache_timestamp', new Date().getTime().toString());
+        } catch (error) {
+          console.error('Ошибка при сохранении данных:', error);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+      
+      // Очищаем предыдущий таймер и устанавливаем новый
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveData, 500); // Задержка 500 мс
+      
+      // Очистка таймера при размонтировании
+      return () => {
+        if (saveTimeout) clearTimeout(saveTimeout);
+      };
+    }
+  }, [cycles, isInitialDataLoaded]);
   
   // Использование useEffect для проверки аутентификации
   useEffect(() => {
@@ -214,7 +292,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Открытие модального окна редактирования
-  const openEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => {
+  const openEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => {
     console.log('openEditModal:', type, parentId);
     setEditType(type);
     setParentForEdit(parentId || null);
@@ -240,7 +318,8 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             const groupToEdit = cycle.groups.find(g => g.id === parentId);
             if (groupToEdit) {
               itemData = groupToEdit;
-              setEditTitle('Редактировать группу');
+              // Меняем заголовок для редактирования существующей группы
+              setEditTitle('Редактировать список препаратов');
             }
           });
           break;
@@ -274,6 +353,18 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             });
           });
           break;
+        
+        case 'table':
+          // Ищем таблицу по ID
+          const tableToEdit = tables.find(t => t.id === parentId);
+          if (tableToEdit) {
+            itemData = {
+              name: tableToEdit.name,
+              gradient: tableToEdit.gradient
+            };
+            setEditTitle('Редактировать таблицу');
+          }
+          break;
       }
       
       if (itemData) {
@@ -296,6 +387,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
           case 'category':
             setEditTitle('Добавить новую категорию');
             break;
+          case 'table':
+            setEditTitle('Добавить новую таблицу');
+            break;
         }
       }
     } else {
@@ -314,6 +408,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
           break;
         case 'category':
           setEditTitle('Добавить новую категорию');
+          break;
+        case 'table':
+          setEditTitle('Добавить новую таблицу');
           break;
       }
     }
@@ -366,10 +463,11 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
               ...cycle,
               groups: cycle.groups.map(group => {
                 if (group.id === newItem.id) {
-                  console.log('Обновляем препараты группы:', newItem.preparations);
+                  console.log('Обновляем группу:', newItem);
                   return { 
                     ...group, 
-                    name: newItem.name, 
+                    name: newItem.name,
+                    gradient: newItem.gradient,
                     preparations: newItem.preparations 
                   };
                 }
@@ -480,6 +578,26 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
           });
         }
         break;
+      
+      case 'table':
+        if (isUpdate) {
+          // Обновляем существующую таблицу
+          setTables(prev => prev.map(table => {
+            if (table.id === parentForEdit) {
+              return {
+                ...table,
+                name: newItem.name,
+                gradient: newItem.gradient
+              };
+            }
+            return table;
+          }));
+        } else {
+          // Логика для создания новой таблицы перенесена в функцию createTable
+          // Этот блок не должен выполняться для таблиц, так как у нас есть отдельный процесс создания таблиц
+          console.log('Создание таблицы через модальное окно редактирования не поддерживается');
+        }
+        break;
     }
     
     setCycles(newCycles);
@@ -502,9 +620,13 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Открытие палитры цветов
-  const openColorPicker = (itemId: number, itemType: 'cycle' | 'group' = 'cycle') => {
+  const openColorPicker = (itemId: number, itemType: 'cycle' | 'group' | 'table' = 'cycle') => {
     setSelectedCycleId(itemId);
     setItemType(itemType);
+    // Если это таблица, также устанавливаем selectedTableId
+    if (itemType === 'table') {
+      setSelectedTableId(itemId);
+    }
     setColorPickerOpen(true);
   }
   
@@ -538,6 +660,18 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
       });
       
       setCycles(newCycles);
+    } else if (itemType === 'table') {
+      // Для таблиц используем selectedCycleId вместо selectedTableId, 
+      // так как в openColorPicker мы устанавливаем itemId в selectedCycleId
+      setTables(prev => prev.map(table => {
+        if (table.id === selectedCycleId) {
+          return {
+            ...table,
+            gradient
+          };
+        }
+        return table;
+      }));
     }
   }
   
@@ -675,6 +809,25 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
         break;
         
       case 'category':
+        newCycles = newCycles.map(cycle => {
+          return {
+            ...cycle,
+            groups: cycle.groups.map(group => {
+              return {
+                ...group,
+                subgroups: group.subgroups.map(subgroup => {
+                  return {
+                    ...subgroup,
+                    categories: subgroup.categories.filter(category => category.id !== id)
+                  }
+                })
+              }
+            })
+          }
+        });
+        break;
+      
+      case 'table':
         newCycles = newCycles.map(cycle => {
           return {
             ...cycle,
@@ -861,7 +1014,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Обновляем функции, требующие проверки сессии
-  const secureOpenEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => {
+  const secureOpenEditModal = (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => {
     if (!isAuthenticated && isEditorMode) {
       setIsEditorMode(false);
       setPasswordError('Время сессии истекло. Пожалуйста, войдите снова.');
@@ -1011,11 +1164,209 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     setDragOverGroup(null);
   }
   
+  // Открытие модального окна для создания таблицы
+  const openTableModal = useCallback(() => {
+    // Проверка сессии перед действием
+    checkSessionBeforeAction(() => {
+      setTableModalOpen(true);
+      // Устанавливаем значения по умолчанию
+      setNewTableName('');
+      setNewTableGradient('from-blue-500 via-indigo-500 to-violet-600');
+      setNewTableRows(3);
+      setNewTableColumns(3);
+    });
+  }, [checkSessionBeforeAction]);
+
+  // Закрытие модального окна создания таблицы
+  const closeTableModal = useCallback(() => {
+    setTableModalOpen(false);
+  }, []);
+
+  // Установка размера новой таблицы
+  const setNewTableSize = useCallback((rows: number, columns: number) => {
+    setNewTableRows(rows);
+    setNewTableColumns(columns);
+  }, []);
+
+  // Создание новой таблицы
+  const createTable = useCallback(() => {
+    if (!newTableName.trim()) return;
+    
+    // Генерируем новый ID
+    const newId = Date.now();
+    
+    // Создаем ячейки для таблицы
+    const rows: TableRow[] = [];
+    for (let r = 0; r < newTableRows; r++) {
+      const cells: TableCell[] = [];
+      for (let c = 0; c < newTableColumns; c++) {
+        cells.push({
+          id: Date.now() + r * 100 + c,
+          content: ''
+        });
+      }
+      rows.push({
+        id: Date.now() + r * 1000,
+        cells
+      });
+    }
+    
+    // Создаем новую таблицу
+    const newTable: Table = {
+      id: newId,
+      name: newTableName,
+      gradient: newTableGradient,
+      rows,
+      columns: newTableColumns
+    };
+    
+    // Добавляем таблицу в массив
+    setTables(prev => [...prev, newTable]);
+    
+    // Закрываем модальное окно
+    closeTableModal();
+  }, [newTableName, newTableGradient, newTableRows, newTableColumns, closeTableModal]);
+
+  // Обновление ячейки таблицы
+  const updateTableCell = useCallback((tableId: number, rowIndex: number, cellIndex: number, content: string) => {
+    setTables(prev => prev.map(table => {
+      if (table.id === tableId) {
+        const updatedRows = [...table.rows];
+        if (updatedRows[rowIndex] && updatedRows[rowIndex].cells[cellIndex]) {
+          const updatedCells = [...updatedRows[rowIndex].cells];
+          updatedCells[cellIndex] = {
+            ...updatedCells[cellIndex],
+            content
+          };
+          updatedRows[rowIndex] = {
+            ...updatedRows[rowIndex],
+            cells: updatedCells
+          };
+        }
+        return {
+          ...table,
+          rows: updatedRows
+        };
+      }
+      return table;
+    }));
+  }, []);
+
+  // Добавление строки в таблицу
+  const addTableRow = useCallback((tableId: number) => {
+    setTables(prev => prev.map(table => {
+      if (table.id === tableId) {
+        const newCells: TableCell[] = [];
+        for (let c = 0; c < table.columns; c++) {
+          newCells.push({
+            id: Date.now() + c,
+            content: ''
+          });
+        }
+        
+        const newRow: TableRow = {
+          id: Date.now(),
+          cells: newCells
+        };
+        
+        return {
+          ...table,
+          rows: [...table.rows, newRow]
+        };
+      }
+      return table;
+    }));
+  }, []);
+
+  // Добавление столбца в таблицу
+  const addTableColumn = useCallback((tableId: number) => {
+    setTables(prev => prev.map(table => {
+      if (table.id === tableId) {
+        const updatedRows = table.rows.map(row => {
+          return {
+            ...row,
+            cells: [
+              ...row.cells,
+              { id: Date.now() + row.id, content: '' }
+            ]
+          };
+        });
+        
+        return {
+          ...table,
+          rows: updatedRows,
+          columns: table.columns + 1
+        };
+      }
+      return table;
+    }));
+  }, []);
+
+  // Удаление строки из таблицы
+  const removeTableRow = useCallback((tableId: number, rowIndex: number) => {
+    setTables(prev => prev.map(table => {
+      if (table.id === tableId && table.rows.length > 1) {
+        const updatedRows = [...table.rows];
+        updatedRows.splice(rowIndex, 1);
+        
+        return {
+          ...table,
+          rows: updatedRows
+        };
+      }
+      return table;
+    }));
+  }, []);
+
+  // Удаление столбца из таблицы
+  const removeTableColumn = useCallback((tableId: number, columnIndex: number) => {
+    setTables(prev => prev.map(table => {
+      if (table.id === tableId && table.columns > 1) {
+        const updatedRows = table.rows.map(row => {
+          const updatedCells = [...row.cells];
+          updatedCells.splice(columnIndex, 1);
+          
+          return {
+            ...row,
+            cells: updatedCells
+          };
+        });
+        
+        return {
+          ...table,
+          rows: updatedRows,
+          columns: table.columns - 1
+        };
+      }
+      return table;
+    }));
+  }, []);
+
+  // Изменение названия таблицы
+  const editTableName = useCallback((tableId: number, name: string) => {
+    setTables(prev => prev.map(table => 
+      table.id === tableId ? { ...table, name } : table
+    ));
+  }, []);
+
+  // Изменение цвета шапки таблицы
+  const editTableGradient = useCallback((tableId: number, gradient: string) => {
+    setTables(prev => prev.map(table => 
+      table.id === tableId ? { ...table, gradient } : table
+    ));
+  }, []);
+
+  // Удаление таблицы
+  const deleteTable = useCallback((tableId: number) => {
+    setTables(prev => prev.filter(table => table.id !== tableId));
+  }, []);
+
   // Создаем значение контекста, объединяя состояние и действия
   const contextValue: DrugClassificationContextType = {
     // Состояние
     cycles: filteredCycles,
     selectedCycles,
+    tables,
     setSelectedCycles,
     isEditorMode,
     setIsEditorMode,
@@ -1080,7 +1431,36 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     checkSessionBeforeAction,
     setCycles,
     setPasswordModalOpen,
-    setPasswordError
+    setPasswordError,
+    // Состояния загрузки данных
+    isLoading,
+    isInitialDataLoaded,
+    isSaving,
+    // Метод для принудительного обновления данных
+    reloadData,
+    // Состояния таблиц
+    tableModalOpen,
+    newTableName,
+    newTableGradient,
+    newTableRows,
+    newTableColumns,
+    selectedTableId,
+    // Методы для работы с таблицами
+    setTables,
+    openTableModal,
+    closeTableModal,
+    setNewTableName,
+    setNewTableGradient,
+    setNewTableSize,
+    createTable,
+    updateTableCell,
+    addTableRow,
+    addTableColumn,
+    removeTableRow,
+    removeTableColumn,
+    editTableName,
+    editTableGradient,
+    deleteTable
   }
   
   return (

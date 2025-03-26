@@ -28,6 +28,25 @@ export interface Cycle {
   groups: Group[];
 }
 
+// Новый интерфейс для таблиц
+export interface TableCell {
+  id: number;
+  content: string;
+}
+
+export interface TableRow {
+  id: number;
+  cells: TableCell[];
+}
+
+export interface Table {
+  id: number;
+  name: string;
+  gradient: string;
+  rows: TableRow[];
+  columns: number;
+}
+
 // Интерфейсы для перетаскивания элементов
 export interface DraggedGroup extends Group {
   cycleId: number;
@@ -61,7 +80,7 @@ export interface EditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
-  type: 'cycle' | 'group' | 'subgroup' | 'category';
+  type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table';
   title: string;
   initialData?: any;
   parentId?: number | null;

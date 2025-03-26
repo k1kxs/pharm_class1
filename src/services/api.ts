@@ -96,11 +96,26 @@ export const authAPI = {
 export const dataAPI = {
   getData: async () => {
     try {
-      // Получение данных из localStorage вместо сервера
-      const localData = localStorage.getItem('drug_classification_data');
-      if (localData) {
-        return JSON.parse(localData);
+      // Оптимизированное получение данных из localStorage
+      const cacheKey = 'drug_classification_data';
+
+      // Используем мемоизированное значение при повторных вызовах в одной сессии
+      if ((dataAPI as any)._cachedData) {
+        return (dataAPI as any)._cachedData;
       }
+
+      // Чтение данных из localStorage одним вызовом
+      const localData = localStorage.getItem(cacheKey);
+      
+      if (localData) {
+        // Парсинг данных выполняем только если они есть
+        const parsedData = JSON.parse(localData);
+        // Сохраняем в памяти для последующих вызовов
+        (dataAPI as any)._cachedData = parsedData;
+        return parsedData;
+      }
+      
+      // Возвращаем пустой объект, если данных нет
       return { cycles: [] };
     } catch (error) {
       console.error('Ошибка при получении данных:', error);
@@ -110,13 +125,29 @@ export const dataAPI = {
   
   saveData: async (cycles: any[]) => {
     try {
-      // Сохранение данных в localStorage вместо сервера
-      localStorage.setItem('drug_classification_data', JSON.stringify({ cycles }));
+      // Оптимизированное сохранение данных в localStorage
+      const cacheKey = 'drug_classification_data';
+      const data = { cycles };
+      
+      // Сериализуем JSON только один раз
+      const jsonData = JSON.stringify(data);
+      
+      // Обновляем локальный кэш в памяти
+      (dataAPI as any)._cachedData = data;
+      
+      // Записываем в localStorage
+      localStorage.setItem(cacheKey, jsonData);
+      
       return { message: 'Данные успешно сохранены' };
     } catch (error) {
       console.error('Ошибка при сохранении данных:', error);
       throw new Error('Не удалось сохранить данные');
     }
+  },
+  
+  // Очистка кэша в памяти
+  clearCache: () => {
+    (dataAPI as any)._cachedData = null;
   },
   
   // Только для администраторов

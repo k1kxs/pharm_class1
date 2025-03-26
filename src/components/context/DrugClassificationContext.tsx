@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory } from '../types';
+import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory, Table } from '../types';
 import { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 
 // Тип состояния
@@ -7,6 +7,8 @@ export interface DrugClassificationState {
   // Основные данные
   cycles: Cycle[];
   selectedCycles: number[];
+  // Данные таблиц
+  tables: Table[];
   
   // Состояния для модальных окон
   passwordModalOpen: boolean;
@@ -14,14 +16,22 @@ export interface DrugClassificationState {
   isEditorMode: boolean;
   isAuthenticated: boolean;
   editModalOpen: boolean;
-  editType: 'cycle' | 'group' | 'subgroup' | 'category';
+  editType: 'cycle' | 'group' | 'subgroup' | 'category' | 'table';
   editTitle: string;
   editData: any | null;
   parentForEdit: number | null;
   exportModalOpen: boolean;
   colorPickerOpen: boolean;
   selectedCycleId: number | null;
-  itemType: 'cycle' | 'group';
+  itemType: 'cycle' | 'group' | 'table';
+  
+  // Состояния для таблиц
+  tableModalOpen: boolean;
+  newTableName: string;
+  newTableGradient: string;
+  newTableRows: number;
+  newTableColumns: number;
+  selectedTableId: number | null;
   
   // Состояния для редактирования заголовков
   isEditingTitle: number | null;
@@ -41,6 +51,11 @@ export interface DrugClassificationState {
   
   // Состояние сессии
   sessionExpirationTime?: number;
+  
+  // Состояние загрузки данных
+  isLoading: boolean;
+  isInitialDataLoaded: boolean;
+  isSaving: boolean;
 }
 
 // Тип действий контекста
@@ -49,6 +64,23 @@ export interface DrugClassificationActions {
   setCycles: (cycles: Cycle[]) => void;
   toggleCycle: (cycleId: number) => void;
   setSelectedCycles: (cycles: number[]) => void;
+  
+  // Действия для таблиц
+  setTables: (tables: Table[]) => void;
+  openTableModal: () => void;
+  closeTableModal: () => void;
+  setNewTableName: (name: string) => void;
+  setNewTableGradient: (gradient: string) => void;
+  setNewTableSize: (rows: number, columns: number) => void;
+  createTable: () => void;
+  updateTableCell: (tableId: number, rowIndex: number, cellIndex: number, content: string) => void;
+  addTableRow: (tableId: number) => void;
+  addTableColumn: (tableId: number) => void;
+  removeTableRow: (tableId: number, rowIndex: number) => void;
+  removeTableColumn: (tableId: number, columnIndex: number) => void;
+  editTableName: (tableId: number, name: string) => void;
+  editTableGradient: (tableId: number, gradient: string) => void;
+  deleteTable: (tableId: number) => void;
   
   // Действия для модальных окон
   openPasswordModal: () => void;
@@ -59,7 +91,7 @@ export interface DrugClassificationActions {
   setPasswordModalOpen: (value: boolean) => void;
   setPasswordError: (error: string | null) => void;
   
-  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
+  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   closeEditModal: () => void;
   handleSaveEdit: (data: any) => void;
   
@@ -67,7 +99,7 @@ export interface DrugClassificationActions {
   closeExportModal: () => void;
   handleExport: (cycleIds: number[]) => void;
   
-  openColorPicker: (itemId: number, itemType?: 'cycle' | 'group') => void;
+  openColorPicker: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   closeColorPicker: () => void;
   handleColorSelect: (gradient: string) => void;
   
@@ -99,6 +131,9 @@ export interface DrugClassificationActions {
   handleDragOver: (event: DragOverEvent) => void;
   handleDragEnd: (event: DragEndEvent) => void;
   sensors: any; // Тип для сенсоров dnd-kit
+  
+  // Метод для принудительного обновления данных
+  reloadData: () => Promise<void>;
   
   // Служебные функции
   checkSessionBeforeAction: (action: () => void) => void;
