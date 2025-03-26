@@ -1046,13 +1046,15 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     startEditingTitle: secureStartEditingTitle,
     finishEditingTitle: secureFinishEditingTitle,
     onEditingTitleChange: setEditingTitleValue,
-    setEditingTitleValue,
     handleDelete: secureHandleDelete,
     // DnD состояния
     draggedCycle,
     dragOverCycle,
     draggedGroup,
     dragOverGroup,
+    draggedSubgroup,
+    dragOverSubgroup,
+    draggedCategory,
     // Старые обработчики DnD
     handleCycleDragStart,
     handleCycleDragOver,

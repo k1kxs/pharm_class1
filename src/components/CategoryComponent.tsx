@@ -32,7 +32,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   onOpenEditor
 }) => {
   return (
-    <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
+    <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component">
       <div className="flex justify-between items-start">
         <div className="w-2/5 pr-4 min-w-0 overflow-hidden">
           {isEditingTitle === category.id ? (
@@ -74,17 +74,17 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
           {category.preparations ? (
             <div>
               <div
-                className="text-sm text-gray-700 formatted-preparations prep-container"
+                className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
                 dangerouslySetInnerHTML={{ __html: category.preparations }}
               />
               
               {isEditorMode && onOpenEditor && (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-2 flex justify-end">
                   <button
                     onClick={() => onOpenEditor('category', category.id)}
-                    className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                    className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                   >
-                    <Edit size={10} className="mr-1.5" />
+                    <Edit size={10} className="mr-1" />
                     <span className="font-medium">Редактировать</span>
                   </button>
                 </div>

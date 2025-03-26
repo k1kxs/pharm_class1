@@ -33,7 +33,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow">
+    <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow subgroup-component">
       <div className="p-3 flex justify-between items-center rounded-lg hover:bg-gray-50 transition-colors duration-200">
         <div className="flex-1 flex items-center min-w-0 overflow-hidden mr-2">
           <CornerDownRight size={16} className="text-gray-400 mr-2 flex-shrink-0" />
@@ -99,7 +99,41 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
       {isSubgroupExpanded && (
         <div className="p-3 bg-gray-50 rounded-b-lg border-t scale-in">
           <div className="flex flex-row">
-            <div className="w-2/3 space-y-3">
+            <div className={`w-1/4 pr-4 ${isEditorMode ? '' : 'invisible'}`}>
+              {isEditorMode && (
+                <div className="flex justify-start mb-3">
+                  <button
+                    onClick={() => onOpenEditor('category', subgroup.id)}
+                    className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                  >
+                    <Plus size={12} className="mr-1.5" />
+                    <span className="font-medium">Добавить категорию</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="w-3/4">
+              {subgroup.preparations && (
+                <div>
+                  <div
+                    className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
+                    dangerouslySetInnerHTML={{ __html: subgroup.preparations }}
+                  />
+                  {isEditorMode && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => onOpenEditor('subgroup', subgroup.id)}
+                        className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                      >
+                        <Edit size={12} className="mr-1" />
+                        <span className="font-medium">Редактировать препараты</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {subgroup.categories && subgroup.categories.length > 0 ? (
                 subgroup.categories.map((category: Category) => (
                   <CategoryComponent
@@ -121,24 +155,10 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
               ) : (
                 <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
                   {isEditorMode ? (
-                    <p>Добавьте категорию с помощью кнопки выше</p>
+                    <p>Добавьте категорию с помощью кнопки слева</p>
                   ) : (
                     <p>В данной подгруппе нет категорий</p>
                   )}
-                </div>
-              )}
-            </div>
-            
-            <div className="w-1/3 pl-4 pr-8">
-              {isEditorMode && (
-                <div className="flex justify-start mb-3">
-                  <button
-                    onClick={() => onOpenEditor('category', subgroup.id)}
-                    className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-                  >
-                    <Plus size={12} className="mr-1.5" />
-                    <span className="font-medium">Добавить категорию</span>
-                  </button>
                 </div>
               )}
             </div>

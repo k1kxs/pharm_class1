@@ -56,7 +56,7 @@ const ModernDrugClassification: React.FC = () => {
     handleColorSelect,
     startEditingTitle,
     finishEditingTitle,
-    setEditingTitleValue,
+    onEditingTitleChange: setEditingTitleValue,
     setSearchQuery,
     handleDelete,
     handleCycleDragStart,

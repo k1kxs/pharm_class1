@@ -10,6 +10,7 @@ export interface Subgroup {
   id: number;
   name: string;
   categories: Category[];
+  preparations?: string; // Опциональное поле для подгруппы с препаратами
 }
 
 export interface Group {

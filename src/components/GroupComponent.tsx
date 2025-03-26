@@ -74,7 +74,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 bg-white`}
+      className={`border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 bg-white group-component`}
       draggable={isEditorMode}
       onDragStart={(e) => onGroupDragStart(e, group, cycleId)}
       onDragOver={(e) => onGroupDragOver(e, group, cycleId)}
@@ -163,8 +163,8 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
             {/* Препараты группы, если есть */}
             <div className="flex flex-row">
               {/* Блок для кнопки добавления подгруппы */}
-              {isEditorMode && (
-                <div className="w-1/3 pr-4 flex flex-col">
+              <div className={`w-1/3 pr-4 flex flex-col ${isEditorMode ? '' : 'invisible'}`}>
+                {isEditorMode && (
                   <button
                     onClick={() => onOpenEditor('subgroup', group.id)}
                     className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mb-4 self-end"
@@ -172,28 +172,28 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                     <Plus size={14} className="mr-1.5" />
                     <span className="font-medium">Добавить подгруппу</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Блок для препаратов группы */}
-              <div className={`${isEditorMode ? 'w-2/3' : 'w-full'}`}>
+              <div className="w-2/3">
                 {group.preparations ? (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="flex justify-between items-center mb-3">
-                      {isEditorMode && (
-                        <button
-                          onClick={() => onOpenEditor('group', group.id)}
-                          className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-                        >
-                          <Edit size={12} className="mr-1.5" />
-                          <span className="font-medium">Редактировать</span>
-                        </button>
-                      )}
-                    </div>
+                  <div>
                     <div 
-                      className="text-sm text-gray-700 formatted-preparations prep-container"
+                      className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
                       dangerouslySetInnerHTML={{ __html: group.preparations }}
                     />
+                    {isEditorMode && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          onClick={() => onOpenEditor('group', group.id)}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                        >
+                          <Edit size={12} className="mr-1" />
+                          <span className="font-medium">Редактировать</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : isEditorMode && (
                   <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">

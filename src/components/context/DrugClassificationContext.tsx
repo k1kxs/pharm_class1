@@ -74,7 +74,7 @@ export interface DrugClassificationActions {
   // Действия для редактирования заголовков
   startEditingTitle: (type: string, item: any) => void;
   finishEditingTitle: (type: string, id: number) => void;
-  setEditingTitleValue: (value: string) => void;
+  onEditingTitleChange: (value: string) => void;
   
   // Действия для поиска
   setSearchQuery: (query: string) => void;
@@ -99,6 +99,9 @@ export interface DrugClassificationActions {
   handleDragOver: (event: DragOverEvent) => void;
   handleDragEnd: (event: DragEndEvent) => void;
   sensors: any; // Тип для сенсоров dnd-kit
+  
+  // Служебные функции
+  checkSessionBeforeAction: (action: () => void) => void;
 }
 
 // Создаем тип для полного контекста (состояние + действия)

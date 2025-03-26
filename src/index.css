@@ -45,18 +45,20 @@ code {
 /* Улучшенные стили для таблицы препаратов */
 .prep-container {
   min-height: 1.5rem;
-  line-height: 1.2;
+  line-height: 1.4;
   padding: 0.5rem 0;
+  background-color: #f9fafb !important;
 }
 
 .prep-container ul {
   padding-left: 1.25rem;
   margin: 0;
+  margin-bottom: 0.5rem;
 }
 
 .prep-container li {
   position: relative;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
   list-style-type: none;
   padding-left: 0.5rem;
 }
@@ -147,6 +149,64 @@ tbody tr:last-child td:last-child {
   table tbody td {
     padding: 0.625rem 0.5rem;
   }
+}
+
+/* Дополнительные улучшения для форматирования препаратов */
+.formatted-preparations {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.formatted-preparations ul li,
+.formatted-preparations ol li {
+  margin-bottom: 0.5rem;
+}
+
+.formatted-preparations ul li:last-child,
+.formatted-preparations ol li:last-child {
+  margin-bottom: 0;
+}
+
+/* Улучшение табуляции */
+.formatted-preparations ul, 
+.formatted-preparations ol {
+  margin-left: 0.5rem;
+}
+
+/* Улучшаем маркеры списков */
+.formatted-preparations ul {
+  list-style-type: none;
+}
+
+.formatted-preparations ul > li {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.formatted-preparations ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--primary-color);
+}
+
+.formatted-preparations ul > li::after {
+  content: "◦";
+  position: absolute;
+  left: 0;
+  color: var(--secondary-color);
+}
+
+.formatted-preparations ul ul > li::before {
+  content: "▪";
+  font-size: 0.7em;
+  top: 0.5em;
+}
+
+/* Улучшенные отступы между пунктами */
+.formatted-preparations p + ul,
+.formatted-preparations p + ol {
+  margin-top: 0.5rem;
 }
 
 /* Улучшенные анимации для интерфейса */
@@ -315,7 +375,7 @@ tbody tr:last-child td:last-child {
   stroke: #3b82f6;
 }
 
-/* Стили для отображения форматированного текста препаратов */
+/* Улучшенные стили для форматированных препаратов */
 .formatted-preparations ul {
   list-style-type: disc;
   padding-left: 1.5rem;
@@ -328,8 +388,53 @@ tbody tr:last-child td:last-child {
   margin-bottom: 0.5rem;
 }
 
+/* Улучшаем вложенные списки с корректными отступами */
+.formatted-preparations ul ul,
+.formatted-preparations ol ul,
+.formatted-preparations ul ol,
+.formatted-preparations ol ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+  padding-left: 1.5rem;
+}
+
+/* Для вложенных списков второго уровня */
+.formatted-preparations ul ul li,
+.formatted-preparations ol ul li {
+  position: relative;
+}
+
+.formatted-preparations ul ul li::before,
+.formatted-preparations ol ul li::before {
+  content: "◦";
+  position: absolute;
+  left: -1rem;
+  color: var(--secondary-color);
+}
+
+/* Для вложенных списков третьего уровня */
+.formatted-preparations ul ul ul li,
+.formatted-preparations ol ul ul li,
+.formatted-preparations ul ol ul li,
+.formatted-preparations ol ol ul li {
+  position: relative;
+}
+
+.formatted-preparations ul ul ul li::before,
+.formatted-preparations ol ul ul li::before,
+.formatted-preparations ul ol ul li::before,
+.formatted-preparations ol ol ul li::before {
+  content: "▪";
+  position: absolute;
+  left: -1rem;
+  font-size: 0.7em;
+  top: 0.5em;
+  color: var(--primary-color);
+}
+
 .formatted-preparations li {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+  position: relative;
 }
 
 .formatted-preparations p {
@@ -349,4 +454,104 @@ tbody tr:last-child td:last-child {
 .formatted-preparations a {
   color: #3b82f6;
   text-decoration: underline;
+}
+
+/* Унифицированные стили для препаратов без категории */
+.formatted-preparations {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  padding: 0.75rem !important;
+  background-color: #f9fafb !important;
+  border-radius: 0.375rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Единообразное форматирование для всех блоков с препаратами */
+.formatted-preparations,
+div[dangerouslySetInnerHTML] {
+  margin-bottom: 0 !important;
+}
+
+/* Одинаковые стили для всех блоков препаратов */
+.prep-container {
+  background-color: #f9fafb !important;
+  min-height: 1.5rem !important;
+  border-radius: 0.375rem !important;
+  margin-left: auto !important;
+}
+
+/* Унифицируем отображение препаратов в каждом компоненте */
+.group-component .prep-container,
+.subgroup-component .prep-container,
+.category-component .prep-container {
+  width: 100% !important;
+}
+
+/* Правила для выравнивания препаратов справа */
+[class*="component"] > div > div.flex > div:last-child {
+  padding-left: 1rem;
+}
+
+/* Исправление расположения блоков с препаратами */
+@media (max-width: 768px) {
+  .formatted-preparations {
+    font-size: 0.8125rem !important;
+    padding: 0.5rem !important;
+  }
+}
+
+/* Унифицированное отображение плиток с препаратами */
+.formatted-preparations {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  border-radius: 0.375rem !important;
+  background-color: #f9fafb !important;
+  margin-bottom: 0 !important;
+  padding: 1rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  max-width: 100% !important;
+}
+
+/* Исправление для отступов препаратов без категории */
+.group-component .w-2/3,
+.subgroup-component .w-3/4,
+.category-component .w-3/5 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Кнопки редактирования под плитками препаратов */
+.category-component div.mt-2,
+.group-component div.mt-2,
+.subgroup-component div.mt-2 {
+  margin-top: 0.5rem !important;
+}
+
+/* Исправление для отступов между препаратами и кнопкой */
+.group-component button,
+.subgroup-component button,
+.category-component button {
+  font-size: 0.75rem !important;
+}
+
+/* Унифицированное выравнивание для всех компонентов */
+.group-component, .subgroup-component, .category-component {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-component .flex.flex-row,
+.category-component .flex.justify-between {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Стандартизация отображения препаратов во всех компонентах */
+.group-component .prep-container,
+.subgroup-component .prep-container,
+.category-component .prep-container {
+  padding: 1rem !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
