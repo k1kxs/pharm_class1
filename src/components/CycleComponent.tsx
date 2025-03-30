@@ -25,6 +25,7 @@ interface CycleComponentProps {
   handleDeleteMedications?: (type: string, id: number) => void;
   onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   onTableAdd?: () => void;
+  openTableModal?: (groupId?: number) => void;
   // Обработчики перетаскивания
   onDragStart: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDragOver: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
@@ -55,6 +56,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
   handleDeleteMedications,
   onColorPickerOpen,
   onTableAdd,
+  openTableModal,
   onDragStart,
   onDragOver,
   onDrop,
@@ -219,6 +221,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   onDrop={onGroupDrop}
                   onDragEnd={onGroupDragEnd}
                   searchQuery={searchQuery}
+                  openTableModal={openTableModal}
                 />
               ))}
             </div>

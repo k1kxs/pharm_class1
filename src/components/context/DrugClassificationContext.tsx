@@ -140,6 +140,15 @@ export interface DrugClassificationActions {
   
   // Служебные функции
   checkSessionBeforeAction: (action: () => void) => void;
+  
+  // Функции для работы с таблицами внутри групп
+  updateGroupTableCell: (groupId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => void;
+  removeGroupTable: (groupId: number, tableId: number) => void;
+  moveTableInGroup: (groupId: number, sourceIndex: number, targetIndex: number) => void;
+  addTableRowInGroup: (groupId: number, tableId: number) => void;
+  addTableColumnInGroup: (groupId: number, tableId: number) => void;
+  removeTableRowInGroup: (groupId: number, tableId: number, rowIndex: number) => void;
+  removeTableColumnInGroup: (groupId: number, tableId: number, columnIndex: number) => void;
 }
 
 // Создаем тип для полного контекста (состояние + действия)

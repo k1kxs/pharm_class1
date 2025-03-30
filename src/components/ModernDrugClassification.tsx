@@ -340,7 +340,7 @@ const ModernDrugClassification: React.FC = () => {
         )}
         
         {/* Отображение таблиц */}
-        {!isLoading && tables.length > 0 && (
+        {/*!isLoading && tables.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-700 mb-4">Таблицы</h2>
             <div className="space-y-5">
@@ -356,7 +356,7 @@ const ModernDrugClassification: React.FC = () => {
               ))}
             </div>
           </div>
-        )}
+        )*/}
         
         {/* Список циклов */}
         {!isLoading && cycles.length > 0 && (
@@ -390,6 +390,7 @@ const ModernDrugClassification: React.FC = () => {
                     handleDeleteMedications={handleDeleteMedications}
                     onColorPickerOpen={openColorPicker}
                     onTableAdd={() => openTableModal()}
+                    openTableModal={openTableModal}
                     onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragStart(e, cycle)}
                     onDragOver={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragOver(e, cycle)}
                     onDrop={(e: React.DragEvent<HTMLDivElement>) => handleCycleDrop(e, cycle)}

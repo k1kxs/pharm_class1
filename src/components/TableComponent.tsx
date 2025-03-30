@@ -1,14 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Edit2, Trash2, Plus, Minus, Settings } from 'lucide-react';
+import { Edit2, Trash, Plus, Minus, Settings, GripVertical, Columns, Bold, Italic, Underline, List, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { useDrugClassification } from './context/DrugClassificationContext';
 import { Table } from './types';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+// Импортируем стили для поддержки HTML-форматирования
+import 'tailwindcss/tailwind.css';
 
 interface TableComponentProps {
   table: Table;
   isEditorMode: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onColorChange: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onColorChange?: () => void;
+  hideHeader?: boolean;
+  groupId?: number;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: () => void;
 }
 
 const TableComponent: React.FC<TableComponentProps> = ({
@@ -16,46 +27,57 @@ const TableComponent: React.FC<TableComponentProps> = ({
   isEditorMode,
   onEdit,
   onDelete,
-  onColorChange
+  onColorChange,
+  hideHeader = false,
+  groupId,
+  draggable = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd
 }) => {
   const { 
     updateTableCell,
     addTableRow,
     addTableColumn,
     removeTableRow,
-    removeTableColumn
+    removeTableColumn,
+    updateGroupTableCell,
+    addTableRowInGroup,
+    addTableColumnInGroup,
+    removeTableRowInGroup,
+    removeTableColumnInGroup
   } = useDrugClassification();
 
   const [activeCell, setActiveCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const [cellContent, setCellContent] = useState<string>('');
   const [showColumnControls, setShowColumnControls] = useState<number | null>(null);
   const [showRowControls, setShowRowControls] = useState<number | null>(null);
-  const [isContextMenuOpen, setIsContextMenuOpen] = useState<boolean>(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const cellInputRef = useRef<HTMLTextAreaElement>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
+  // Состояние для отслеживания перетаскивания
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  
+  const [showSizeEditor, setShowSizeEditor] = useState(false);
 
-  // Фокус на активной ячейке
-  useEffect(() => {
-    if (activeCell && cellInputRef.current) {
-      cellInputRef.current.focus();
+  // Конфигурация Quill редактора
+  const modules = {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'align': [] }],
+      ['clean']
+    ],
+    clipboard: {
+      // Позволяем сохранять форматирование при вставке
+      matchVisual: false
     }
-  }, [activeCell]);
+  };
 
-  // Закрытие контекстного меню при клике вне его
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
-        setIsContextMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
+  const formats = [
+    'bold', 'italic', 'underline',
+    'list', 'bullet', 'align'
+  ];
 
   // Обработчик клика по ячейке
   const handleCellClick = (rowIndex: number, cellIndex: number) => {
@@ -65,33 +87,26 @@ const TableComponent: React.FC<TableComponentProps> = ({
   };
 
   // Обработчик изменения содержимого ячейки
-  const handleCellChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setCellContent(e.target.value);
-  };
-
-  // Обработчик сохранения ячейки
-  const handleCellBlur = () => {
+  const handleCellChange = (content: string) => {
     if (activeCell) {
-      updateTableCell(table.id, activeCell.rowIndex, activeCell.cellIndex, cellContent);
-      setActiveCell(null);
+      // Проверяем, является ли контент пустым редактором
+      const isEmptyEditor = content === '<p><br></p>';
+      const finalContent = isEmptyEditor ? '' : content;
+      
+      setCellContent(finalContent);
+      
+      // Немедленно обновляем данные таблицы
+      if (groupId) {
+        updateGroupTableCell(groupId, table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
+      } else {
+        updateTableCell(table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
+      }
     }
   };
 
-  // Обработчик нажатия Enter в ячейке
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleCellBlur();
-    }
-  };
-
-  // Обработчик контекстного меню таблицы
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isEditorMode) {
-      e.preventDefault();
-      setContextMenuPosition({ x: e.clientX, y: e.clientY });
-      setIsContextMenuOpen(true);
-    }
+  // Обработчик закрытия редактора
+  const handleCloseEditor = () => {
+    setActiveCell(null);
   };
 
   // Получение размера таблицы из количества строк и ячеек
@@ -99,51 +114,199 @@ const TableComponent: React.FC<TableComponentProps> = ({
     ? `${table.rows.length} x ${table.columns}` 
     : '0 x 0';
 
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-      {/* Заголовок таблицы */}
-      <div 
-        className={`py-3 px-4 flex justify-between items-center bg-gradient-to-r ${table.gradient || 'from-blue-500 via-indigo-500 to-violet-600'}`}
-      >
-        <h3 className="text-lg font-semibold text-white">{table.name}</h3>
-        {isEditorMode && (
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onColorChange}
-              className="p-1.5 bg-white bg-opacity-20 rounded-full text-white hover:bg-opacity-30 transition-all duration-200"
-              title="Изменить цвет"
-            >
-              <Settings size={16} />
-            </button>
-            <button
-              onClick={onEdit}
-              className="p-1.5 bg-white bg-opacity-20 rounded-full text-white hover:bg-opacity-30 transition-all duration-200"
-              title="Редактировать таблицу"
-            >
-              <Edit2 size={16} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 bg-white bg-opacity-20 rounded-full text-white hover:bg-opacity-30 transition-all duration-200"
-              title="Удалить таблицу"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        )}
-      </div>
+  // Обертки для обработчиков drag and drop
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    if (onDragStart) onDragStart(e);
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    setIsDragOver(true);
+    if (onDragOver) onDragOver(e);
+  };
+  
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    setIsDragOver(false);
+    if (onDrop) onDrop(e);
+  };
+  
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    if (onDragEnd) onDragEnd();
+  };
 
-      {/* Размер таблицы (для режима редактирования) */}
+  // Обработчик для изменения размеров таблицы
+  const handleAddRow = () => {
+    if (groupId) {
+      addTableRowInGroup(groupId, table.id);
+    } else {
+      addTableRow(table.id);
+    }
+  };
+
+  const handleAddColumn = () => {
+    if (groupId) {
+      addTableColumnInGroup(groupId, table.id);
+    } else {
+      addTableColumn(table.id);
+    }
+  };
+
+  // Обработчик для удаления строки и столбца
+  const handleRemoveRow = () => {
+    if (table.rows.length <= 1) return; // Не удаляем последнюю строку
+    
+    if (groupId) {
+      removeTableRowInGroup(groupId, table.id, table.rows.length - 1); // Удаляем последнюю строку
+    } else {
+      removeTableRow(table.id, table.rows.length - 1);
+    }
+  };
+
+  const handleRemoveColumn = () => {
+    if (table.columns <= 1) return; // Не удаляем последний столбец
+    
+    if (groupId) {
+      removeTableColumnInGroup(groupId, table.id, table.columns - 1); // Удаляем последний столбец
+    } else {
+      removeTableColumn(table.id, table.columns - 1);
+    }
+  };
+
+  return (
+    <div 
+      className="bg-white rounded-lg shadow-md overflow-hidden mb-6"
+    >
+      {/* Строка с инструментами для редактирования и drag-and-drop */}
       {isEditorMode && (
+        <div className="bg-gray-50 p-2 border-b flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <div
+              className="flex items-center p-1.5 text-blue-600 rounded-md hover:bg-gray-100 transition-all duration-200 cursor-pointer"
+              title="Размеры таблицы"
+              onClick={() => setShowSizeEditor(!showSizeEditor)}
+            >
+              <Columns size={16} className="mr-1" />
+              <span className="text-xs font-medium">{table.rows.length} × {table.columns}</span>
+            </div>
+            
+            {/* Редактор размеров */}
+            {showSizeEditor && (
+              <div className="flex items-center bg-white p-1 rounded-md border shadow-sm">
+                {/* Редактор строк */}
+                <div className="flex items-center mr-3">
+                  <span className="text-xs mr-1.5 text-gray-500">Строки:</span>
+                  <button
+                    onClick={handleRemoveRow}
+                    className="p-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+                    disabled={table.rows.length <= 1}
+                    title="Удалить строку"
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span className="mx-1.5 text-xs font-medium">{table.rows.length}</span>
+                  <button
+                    onClick={handleAddRow}
+                    className="p-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200"
+                    title="Добавить строку"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+                
+                {/* Редактор столбцов */}
+                <div className="flex items-center">
+                  <span className="text-xs mr-1.5 text-gray-500">Столбцы:</span>
+                  <button
+                    onClick={handleRemoveColumn}
+                    className="p-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+                    disabled={table.columns <= 1}
+                    title="Удалить столбец"
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span className="mx-1.5 text-xs font-medium">{table.columns}</span>
+                  <button
+                    onClick={handleAddColumn}
+                    className="p-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200"
+                    title="Добавить столбец"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            {draggable && (
+              <div 
+                className="cursor-grab active:cursor-grabbing p-1.5 text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                draggable={true}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+              >
+                <GripVertical size={16} />
+              </div>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => onDelete()}
+                className="p-1.5 bg-gray-100 rounded-md hover:bg-red-100 hover:text-red-600 transition-all duration-200"
+                title="Удалить таблицу"
+              >
+                <Trash size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Заголовок таблицы, отображается только если hideHeader равен false */}
+      {!hideHeader && (
+        <div 
+          className={`py-3 px-4 flex justify-between items-center bg-gradient-to-r ${table.gradient || 'from-blue-500 via-indigo-500 to-violet-600'}`}
+        >
+          <h3 className="text-lg font-semibold text-white">{table.name}</h3>
+          {isEditorMode && (
+            <div className="flex items-center space-x-2">
+              {onColorChange && (
+                <button
+                  onClick={onColorChange}
+                  className="p-1.5 bg-white bg-opacity-20 rounded-full text-white hover:bg-opacity-30 transition-all duration-200"
+                  title="Изменить цвет"
+                >
+                  <Settings size={16} />
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="p-1.5 bg-white bg-opacity-20 rounded-full text-white hover:bg-opacity-30 transition-all duration-200"
+                  title="Редактировать таблицу"
+                >
+                  <Edit2 size={16} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Размер таблицы (для режима редактирования), отображается только если hideHeader равен false */}
+      {isEditorMode && !hideHeader && (
         <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600 border-b">
           Размер: {tableSize}
         </div>
       )}
 
       {/* Содержимое таблицы */}
-      <div className="p-4" onContextMenu={handleContextMenu}>
-        <div className="relative overflow-x-auto">
-          <table className="w-full border-collapse">
+      <div className="p-4 relative" style={{ overflow: 'visible' }}>
+        <div className="relative" style={{ overflow: 'visible' }}>
+          <table className="w-full border-collapse table-fixed">
             <tbody>
               {table.rows.map((row, rowIndex) => (
                 <tr 
@@ -159,159 +322,74 @@ const TableComponent: React.FC<TableComponentProps> = ({
                     return (
                       <td 
                         key={cell.id}
-                        className={`relative border border-gray-200 p-0 ${
-                          isFirstRow ? 'bg-gray-50 font-medium' : ''
-                        } group ${isActiveCell ? 'p-0' : 'p-2'}`}
+                        className={`relative border border-gray-200 ${
+                          isFirstRow ? 'bg-gray-50' : ''
+                        } ${isActiveCell ? 'p-0' : 'p-2'}`}
                         onMouseEnter={() => isEditorMode && setShowColumnControls(cellIndex)}
                         onMouseLeave={() => setShowColumnControls(null)}
-                        onClick={() => isEditorMode && handleCellClick(rowIndex, cellIndex)}
+                        onClick={() => isEditorMode && !isActiveCell && handleCellClick(rowIndex, cellIndex)}
                       >
                         {isActiveCell ? (
-                          <textarea
-                            ref={cellInputRef}
-                            value={cellContent}
-                            onChange={handleCellChange}
-                            onBlur={handleCellBlur}
-                            onKeyDown={handleKeyDown}
-                            className="w-full h-full min-h-[40px] p-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 border-0"
-                          />
+                          <div className="cell-editor-container">
+                            <style dangerouslySetInnerHTML={{ __html: `
+                              /* Убираем отступы для редактора в ячейке */
+                              .table-cell-editor .ql-toolbar {
+                                border-top: none;
+                                border-left: none;
+                                border-right: none;
+                                padding: 5px;
+                                background: #f8fafc;
+                              }
+                              .table-cell-editor .ql-container {
+                                border: none;
+                                font-size: 0.875rem;
+                                min-height: 80px;
+                              }
+                              .table-cell-editor .ql-editor {
+                                padding: 0.5rem;
+                                min-height: 80px;
+                              }
+                              .table-cell-editor .ql-editor p {
+                                margin-bottom: 0.25rem;
+                              }
+                            `}} />
+                            <div className="table-cell-editor">
+                              <ReactQuill
+                                value={cellContent}
+                                onChange={handleCellChange}
+                                modules={modules}
+                                formats={formats}
+                                placeholder="Введите текст..."
+                                theme="snow"
+                              />
+                              <div className="flex justify-end p-2 bg-gray-50 border-t">
+                                <button
+                                  type="button"
+                                  onClick={handleCloseEditor}
+                                  className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                >
+                                  Готово
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ) : (
-                          <div className="min-h-[40px] p-2">
-                            {cell.content}
-                          </div>
-                        )}
-                        
-                        {/* Кнопки управления колонками (показываются только при наведении) */}
-                        {isEditorMode && isFirstRow && showColumnControls === cellIndex && (
-                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addTableColumn(table.id);
-                              }}
-                              className="p-1 bg-green-500 text-white rounded-full shadow-sm"
-                              title="Добавить столбец"
-                            >
-                              <Plus size={12} />
-                            </button>
-                            {table.columns > 1 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeTableColumn(table.id, cellIndex);
-                                }}
-                                className="p-1 bg-red-500 text-white rounded-full shadow-sm"
-                                title="Удалить столбец"
-                              >
-                                <Minus size={12} />
-                              </button>
-                            )}
-                          </div>
+                          <div 
+                            className="min-h-[40px] overflow-auto prose prose-sm max-w-none 
+                              prose-headings:my-1 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 
+                              prose-li:my-0.5 prose-strong:font-bold prose-em:italic"
+                            dangerouslySetInnerHTML={{ __html: cell.content || '' }}
+                          />
                         )}
                       </td>
                     );
                   })}
-                  
-                  {/* Кнопки управления строками (показываются только при наведении) */}
-                  {isEditorMode && showRowControls === rowIndex && (
-                    <td className="w-0 p-0 border-0">
-                      <div className="absolute -right-8 top-1/2 transform -translate-y-1/2 flex flex-col space-y-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addTableRow(table.id);
-                          }}
-                          className="p-1 bg-green-500 text-white rounded-full shadow-sm"
-                          title="Добавить строку"
-                        >
-                          <Plus size={12} />
-                        </button>
-                        {table.rows.length > 1 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeTableRow(table.id, rowIndex);
-                            }}
-                            className="p-1 bg-red-500 text-white rounded-full shadow-sm"
-                            title="Удалить строку"
-                          >
-                            <Minus size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      
-      {/* Контекстное меню */}
-      {isContextMenuOpen && (
-        <div
-          ref={contextMenuRef}
-          className="fixed bg-white rounded-md shadow-lg z-50 py-1 min-w-[180px]"
-          style={{ 
-            top: contextMenuPosition.y, 
-            left: contextMenuPosition.x,
-            maxWidth: '250px'
-          }}
-        >
-          <button 
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-            onClick={() => {
-              setIsContextMenuOpen(false);
-              onEdit();
-            }}
-          >
-            <Edit2 size={14} className="mr-2" />
-            Редактировать название
-          </button>
-          <button 
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-            onClick={() => {
-              setIsContextMenuOpen(false);
-              onColorChange();
-            }}
-          >
-            <Settings size={14} className="mr-2" />
-            Изменить цвет шапки
-          </button>
-          <button 
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-            onClick={() => {
-              setIsContextMenuOpen(false);
-              addTableRow(table.id);
-            }}
-          >
-            <Plus size={14} className="mr-2" />
-            Добавить строку
-          </button>
-          <button 
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-            onClick={() => {
-              setIsContextMenuOpen(false);
-              addTableColumn(table.id);
-            }}
-          >
-            <Plus size={14} className="mr-2" />
-            Добавить столбец
-          </button>
-          <div className="border-t border-gray-200 my-1"></div>
-          <button 
-            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-            onClick={() => {
-              setIsContextMenuOpen(false);
-              onDelete();
-            }}
-          >
-            <Trash2 size={14} className="mr-2" />
-            Удалить таблицу
-          </button>
-        </div>
-      )}
     </div>
   );
 };

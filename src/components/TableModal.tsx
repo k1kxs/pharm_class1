@@ -28,8 +28,10 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       setHoveredCell(null);
       setSelectedSize({ rows: 0, cols: 0 });
+      // Устанавливаем дефолтное название таблицы
+      setNewTableName(`Таблица ${new Date().toLocaleString('ru')}`);
     }
-  }, [isOpen]);
+  }, [isOpen, setNewTableName]);
 
   // Обработчик наведения на ячейку
   const handleCellHover = (row: number, col: number) => {
@@ -44,7 +46,7 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
 
   // Обработчик создания таблицы
   const handleCreateTable = () => {
-    if (newTableName.trim() && selectedSize.rows > 0 && selectedSize.cols > 0) {
+    if (selectedSize.rows > 0 && selectedSize.cols > 0) {
       createTable();
       onClose();
     }
@@ -95,7 +97,7 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
         {/* Заголовок */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Создание таблицы</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Конструктор таблицы</h2>
           <button 
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -106,20 +108,6 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
 
         {/* Содержимое */}
         <div className="p-5">
-          {/* Название таблицы */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название таблицы
-            </label>
-            <input
-              type="text"
-              value={newTableName}
-              onChange={(e) => setNewTableName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите название таблицы"
-            />
-          </div>
-
           {/* Выбор цвета шапки */}
           <div className="mb-5">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -177,11 +165,11 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={handleCreateTable}
             className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              newTableName.trim() && selectedSize.rows > 0 && selectedSize.cols > 0
+              selectedSize.rows > 0 && selectedSize.cols > 0
                 ? 'bg-blue-600 hover:bg-blue-700'
                 : 'bg-blue-400 cursor-not-allowed'
             }`}
-            disabled={!newTableName.trim() || selectedSize.rows === 0 || selectedSize.cols === 0}
+            disabled={selectedSize.rows === 0 || selectedSize.cols === 0}
           >
             Создать таблицу
           </button>

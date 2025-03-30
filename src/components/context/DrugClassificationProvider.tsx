@@ -68,6 +68,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [newTableRows, setNewTableRows] = useState<number>(3);
   const [newTableColumns, setNewTableColumns] = useState<number>(3);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  const [tableParentId, setTableParentId] = useState<number | null>(null); // ID родительской группы
   
   // Состояния для модальных окон подтверждения
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -837,21 +838,22 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             break;
           
           case 'table':
+            // Перебираем все циклы и ищем таблицу для удаления
             newCycles = newCycles.map(cycle => {
               return {
                 ...cycle,
                 groups: cycle.groups.map(group => {
-                  return {
-                    ...group,
-                    subgroups: group.subgroups.map(subgroup => {
-                      return {
-                        ...subgroup,
-                        categories: subgroup.categories.filter(category => category.id !== id)
-                      }
-                    })
+                  // Если у группы есть таблицы, проверяем их
+                  if (group.tables && group.tables.length > 0) {
+                    return {
+                      ...group,
+                      // Удаляем таблицу с указанным id
+                      tables: group.tables.filter(table => table.id !== id)
+                    };
                   }
+                  return group;
                 })
-              }
+              };
             });
             break;
         }
@@ -1177,12 +1179,14 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Открытие модального окна для создания таблицы
-  const openTableModal = useCallback(() => {
+  const openTableModal = useCallback((parentId?: number) => {
     // Проверка сессии перед действием
     checkSessionBeforeAction(() => {
       setTableModalOpen(true);
+      // Сохраняем ID родительской группы
+      setTableParentId(parentId || null);
       // Устанавливаем значения по умолчанию
-      setNewTableName('');
+      setNewTableName(`Таблица ${new Date().toLocaleString('ru')}`);
       setNewTableGradient('from-blue-500 via-indigo-500 to-violet-600');
       setNewTableRows(3);
       setNewTableColumns(3);
@@ -1202,7 +1206,8 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
 
   // Создание новой таблицы
   const createTable = useCallback(() => {
-    if (!newTableName.trim()) return;
+    // Проверяем наличие parentId
+    if (tableParentId === null) return;
     
     // Генерируем новый ID
     const newId = Date.now();
@@ -1223,21 +1228,40 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
       });
     }
     
-    // Создаем новую таблицу
+    // Создаем новую таблицу без названия
     const newTable: Table = {
       id: newId,
-      name: newTableName,
-      gradient: newTableGradient,
+      name: '', // Пустое название
+      gradient: '', // Без градиента
       rows,
       columns: newTableColumns
     };
     
-    // Добавляем таблицу в массив
-    setTables(prev => [...prev, newTable]);
+    // Добавляем таблицу в соответствующую группу
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === tableParentId) {
+            // Если нашли нужную группу, добавляем таблицу
+            return {
+              ...group,
+              tables: [...(group.tables || []), newTable]
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
     
     // Закрываем модальное окно
     closeTableModal();
-  }, [newTableName, newTableGradient, newTableRows, newTableColumns, closeTableModal]);
+  }, [tableParentId, newTableRows, newTableColumns, closeTableModal]);
 
   // Обновление ячейки таблицы
   const updateTableCell = useCallback((tableId: number, rowIndex: number, cellIndex: number, content: string) => {
@@ -1462,6 +1486,299 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     });
   };
 
+  // Обновление ячейки таблицы внутри группы
+  const updateGroupTableCell = useCallback((groupId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Обновляем таблицу внутри группы
+            const updatedTables = group.tables.map(table => {
+              if (table.id === tableId) {
+                const updatedRows = [...table.rows];
+                if (updatedRows[rowIndex] && updatedRows[rowIndex].cells[cellIndex]) {
+                  const updatedCells = [...updatedRows[rowIndex].cells];
+                  updatedCells[cellIndex] = {
+                    ...updatedCells[cellIndex],
+                    content
+                  };
+                  updatedRows[rowIndex] = {
+                    ...updatedRows[rowIndex],
+                    cells: updatedCells
+                  };
+                }
+                return {
+                  ...table,
+                  rows: updatedRows
+                };
+              }
+              return table;
+            });
+            return {
+              ...group,
+              tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление таблицы из группы
+  const removeGroupTable = useCallback((groupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Удаляем таблицу из группы
+            return {
+              ...group,
+              tables: group.tables.filter(table => table.id !== tableId)
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Перемещение таблицы внутри группы
+  const moveTableInGroup = useCallback((groupId: number, sourceIndex: number, targetIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables && group.tables.length > 1) {
+            // Создаем копию массива таблиц
+            const tables = [...group.tables];
+            // Извлекаем таблицу из исходной позиции
+            const [movedTable] = tables.splice(sourceIndex, 1);
+            // Вставляем таблицу в целевую позицию
+            tables.splice(targetIndex, 0, movedTable);
+            
+            // Возвращаем обновленную группу с новым порядком таблиц
+            return {
+              ...group,
+              tables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Добавление строки в таблицу внутри группы
+  const addTableRowInGroup = useCallback((groupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Ищем таблицу по ID
+            const updatedTables = group.tables.map(table => {
+              if (table.id === tableId) {
+                // Создаем новые ячейки для новой строки
+                const newCells = [];
+                for (let c = 0; c < table.columns; c++) {
+                  newCells.push({
+                    id: Date.now() + c,
+                    content: ''
+                  });
+                }
+                
+                // Создаем новую строку
+                const newRow = {
+                  id: Date.now(),
+                  cells: newCells
+                };
+                
+                // Возвращаем обновленную таблицу с новой строкой
+                return {
+                  ...table,
+                  rows: [...table.rows, newRow]
+                };
+              }
+              return table;
+            });
+            
+            // Возвращаем обновленную группу с обновленными таблицами
+            return {
+              ...group,
+              tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Добавление столбца в таблицу внутри группы
+  const addTableColumnInGroup = useCallback((groupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Ищем таблицу по ID
+            const updatedTables = group.tables.map(table => {
+              if (table.id === tableId) {
+                // Обновляем каждую строку, добавляя новую ячейку
+                const updatedRows = table.rows.map(row => {
+                  return {
+                    ...row,
+                    cells: [
+                      ...row.cells,
+                      { id: Date.now() + row.id, content: '' }
+                    ]
+                  };
+                });
+                
+                // Возвращаем обновленную таблицу
+                return {
+                  ...table,
+                  rows: updatedRows,
+                  columns: table.columns + 1
+                };
+              }
+              return table;
+            });
+            
+            // Возвращаем обновленную группу
+            return {
+              ...group,
+              tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление строки в таблице внутри группы
+  const removeTableRowInGroup = useCallback((groupId: number, tableId: number, rowIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Ищем таблицу по ID
+            const updatedTables = group.tables.map(table => {
+              if (table.id === tableId) {
+                // Проверка, чтобы не удалить все строки
+                if (table.rows.length <= 1) {
+                  return table;
+                }
+                
+                // Фильтруем строки, исключая удаляемую
+                const updatedRows = table.rows.filter((_, index) => index !== rowIndex);
+                
+                // Возвращаем обновленную таблицу
+                return {
+                  ...table,
+                  rows: updatedRows
+                };
+              }
+              return table;
+            });
+            
+            // Возвращаем обновленную группу
+            return {
+              ...group,
+              tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление столбца в таблице внутри группы
+  const removeTableColumnInGroup = useCallback((groupId: number, tableId: number, columnIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId && group.tables) {
+            // Ищем таблицу по ID
+            const updatedTables = group.tables.map(table => {
+              if (table.id === tableId) {
+                // Проверка, чтобы не удалить все столбцы
+                if (table.columns <= 1) {
+                  return table;
+                }
+                
+                // Обновляем каждую строку, удаляя ячейку в указанной позиции
+                const updatedRows = table.rows.map(row => {
+                  return {
+                    ...row,
+                    cells: row.cells.filter((_, index) => index !== columnIndex)
+                  };
+                });
+                
+                // Возвращаем обновленную таблицу
+                return {
+                  ...table,
+                  rows: updatedRows,
+                  columns: table.columns - 1
+                };
+              }
+              return table;
+            });
+            
+            // Возвращаем обновленную группу
+            return {
+              ...group,
+              tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
   // Создаем значение контекста, объединяя состояние и действия
   const contextValue: DrugClassificationContextType = {
     // Состояние
@@ -1563,7 +1880,15 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     editTableGradient,
     deleteTable,
     // Новые обработчики
-    handleDeleteMedications: secureHandleDeleteMedications
+    handleDeleteMedications: secureHandleDeleteMedications,
+    // Новые обработчики для работы с таблицами внутри групп
+    updateGroupTableCell,
+    removeGroupTable,
+    moveTableInGroup,
+    addTableRowInGroup,
+    addTableColumnInGroup,
+    removeTableRowInGroup,
+    removeTableColumnInGroup
   }
   
   return (

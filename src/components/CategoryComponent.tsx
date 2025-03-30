@@ -14,9 +14,10 @@ interface CategoryComponentProps {
   onFinishEditingTitle?: (type: string, id: number) => void;
   onEditingTitleChange?: (value: string) => void;
   onDeleteItem: (type: string, id: number) => void;
-  onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
+  onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   searchQuery?: string;
   handleDeleteMedications?: (type: string, id: number) => void;
+  openTableModal?: (groupId?: number) => void;
 }
 
 const CategoryComponent: React.FC<CategoryComponentProps> = ({
@@ -32,7 +33,8 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   onEditingTitleChange,
   onDeleteItem,
   onOpenEditor,
-  handleDeleteMedications
+  handleDeleteMedications,
+  openTableModal
 }) => {
   const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
 
@@ -78,10 +80,17 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
             <div className="mt-2">
               <button
                 onClick={() => setShowEmptyMedicationsPlaceholder(true)}
-                className="px-2.5 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                className="px-2.5 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-xs shadow-sm mr-2"
               >
                 <Plus size={12} className="mr-1" />
                 Добавить препараты
+              </button>
+              <button
+                onClick={() => openTableModal && openTableModal(groupId)}
+                className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm mt-2"
+              >
+                <Plus size={12} className="mr-1" />
+                Добавить таблицу
               </button>
             </div>
           )}

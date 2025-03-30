@@ -19,6 +19,7 @@ export interface Group {
   gradient?: string;
   subgroups: Subgroup[];
   preparations?: string; // Опциональное поле для группы с препаратами
+  tables?: Table[]; // Массив таблиц внутри группы
 }
 
 export interface Cycle {

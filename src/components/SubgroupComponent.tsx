@@ -14,9 +14,10 @@ interface SubgroupComponentProps {
   onFinishEditingTitle?: (type: string, id: number) => void;
   onEditingTitleChange?: (value: string) => void;
   onDeleteItem: (type: string, id: number) => void;
-  onOpenEditor: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
+  onOpenEditor: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   searchQuery?: string;
   handleDeleteMedications?: (type: string, id: number) => void;
+  openTableModal?: (groupId?: number) => void;
 }
 
 const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
@@ -31,7 +32,8 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   onEditingTitleChange,
   onDeleteItem,
   onOpenEditor,
-  handleDeleteMedications
+  handleDeleteMedications,
+  openTableModal
 }) => {
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
   const [isEditingMedications, setIsEditingMedications] = React.useState(true);
@@ -111,6 +113,13 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 <Plus size={14} className="mr-1.5" />
                 <span className="font-medium">Добавить категорию</span>
               </button>
+              <button
+                onClick={() => openTableModal ? openTableModal(groupId) : onOpenEditor('table', subgroup.id)}
+                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
+              >
+                <Plus size={14} className="mr-1.5" />
+                <span className="font-medium">Добавить таблицу</span>
+              </button>
               {!subgroup.preparations && (
                 <button
                   onClick={() => setShowEmptyMedicationsPlaceholder(true)}
@@ -134,12 +143,14 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 <div className="w-2-3">
                   {subgroup.preparations ? (
                     <div>
-                      <div 
-                        className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
-                        dangerouslySetInnerHTML={{ 
-                          __html: subgroup.preparations
-                        }}
-                      />
+                      <div>
+                        <div 
+                          className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
+                          dangerouslySetInnerHTML={{ 
+                            __html: subgroup.preparations
+                          }}
+                        />
+                      </div>
                       {isEditorMode && (
                         <div className="mt-2 flex justify-end">
                           <button
@@ -149,23 +160,15 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                             <Edit size={12} className="mr-1" />
                             Редактировать препараты
                           </button>
-                          <button
-                            onClick={() => {
-                              handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
-                              setShowEmptyMedicationsPlaceholder(false);
-                            }}
-                            className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
-                          >
-                            <Trash size={12} className="mr-1" />
-                            Удалить препараты
-                          </button>
                         </div>
                       )}
                     </div>
                   ) : isEditorMode && showEmptyMedicationsPlaceholder && (
                     <div>
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
-                        <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                      <div>
+                        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                          <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                        </div>
                       </div>
                       <div className="mt-2 flex justify-end">
                         <button
@@ -175,20 +178,36 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                           <Edit size={12} className="mr-1" />
                           Редактировать препараты
                         </button>
-                        <button
-                          onClick={() => {
-                            handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
-                            setShowEmptyMedicationsPlaceholder(false);
-                          }}
-                          className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
-                        >
-                          <Trash size={12} className="mr-1" />
-                          Удалить препараты
-                        </button>
                       </div>
                     </div>
                   )}
                 </div>
+                
+                {isEditorMode && subgroup.preparations && (
+                  <button
+                    onClick={() => {
+                      handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
+                      setShowEmptyMedicationsPlaceholder(false);
+                    }}
+                    className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
+                    title="Удалить препараты"
+                  >
+                    <Trash size={14} />
+                  </button>
+                )}
+                
+                {isEditorMode && !subgroup.preparations && showEmptyMedicationsPlaceholder && (
+                  <button
+                    onClick={() => {
+                      handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
+                      setShowEmptyMedicationsPlaceholder(false);
+                    }}
+                    className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
+                    title="Удалить препараты"
+                  >
+                    <Trash size={14} />
+                  </button>
+                )}
               </div>
             </div>
           )}
