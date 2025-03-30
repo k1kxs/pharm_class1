@@ -10,6 +10,8 @@ import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, T
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { debounce } from 'lodash';
 import ConfirmDialog from '../ui/ConfirmDialog';
+// Импортируем новый PDFExporter
+import PDFExporter from '../../utils/PDFExporter';
 
 interface DrugClassificationProviderProps {
   children: React.ReactNode;
@@ -637,8 +639,8 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   
   // Обработчик экспорта в PDF
   const handleExport = (cycleIds: number[]) => {
-    const pdfGenerator = new PDFGenerator(cycles, cycleIds);
-    pdfGenerator.generatePDF();
+    // Используем новый PDFExporter вместо старого PDFGenerator
+    PDFExporter.exportToPDF(cycles, cycleIds);
   }
   
   // Открытие палитры цветов
