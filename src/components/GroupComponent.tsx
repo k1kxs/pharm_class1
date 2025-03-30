@@ -9,20 +9,23 @@ interface GroupComponentProps {
   group: Group;
   cycleId: number;
   isEditorMode: boolean;
-  isEditingTitle?: number | null;
-  editingTitleValue?: string;
-  onStartEditingTitle?: (type: string, item: any) => void;
-  onFinishEditingTitle?: (type: string, id: number) => void;
-  onEditingTitleChange?: (value: string) => void;
-  onDeleteItem: (type: string, id: number) => void;
-  onOpenEditor: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
-  onOpenColorPicker: (itemId: number, itemType?: 'cycle' | 'group') => void;
+  isEditingTitle: number | null;
+  editingTitleValue: string;
+  onStartEditingTitle: (type: string, item: any) => void;
+  onFinishEditingTitle: (type: string, id: number) => void;
+  onEditingTitleChange: (value: string) => void;
+  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
+  handleDelete: (type: string, id: number) => void;
+  onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   // Обработчики перетаскивания групп
-  onGroupDragStart: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDragOver: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDrop: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDragEnd: () => void;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onDragEnd: () => void;
   searchQuery?: string;
+  onDeleteItem?: (type: string, id: number) => void;
+  onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
+  onOpenColorPicker?: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
 }
 
 const GroupComponent: React.FC<GroupComponentProps> = ({
@@ -34,13 +37,17 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
   onStartEditingTitle,
   onFinishEditingTitle,
   onEditingTitleChange,
+  openEditModal,
+  handleDelete,
+  onColorPickerOpen,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  searchQuery,
   onDeleteItem,
   onOpenEditor,
-  onOpenColorPicker,
-  onGroupDragStart,
-  onGroupDragOver,
-  onGroupDrop,
-  onGroupDragEnd
+  onOpenColorPicker
 }) => {
   const [isGroupExpanded, setIsGroupExpanded] = React.useState(false);
   
@@ -77,10 +84,10 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
       {...attributes}
       className={`border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 bg-white group-component`}
       draggable={isEditorMode}
-      onDragStart={(e) => onGroupDragStart(e, group, cycleId)}
-      onDragOver={(e) => onGroupDragOver(e, group, cycleId)}
-      onDrop={(e) => onGroupDrop(e, group, cycleId)}
-      onDragEnd={onGroupDragEnd}
+      onDragStart={(e) => onDragStart(e, group, cycleId)}
+      onDragOver={(e) => onDragOver(e, group, cycleId)}
+      onDrop={(e) => onDrop(e, group, cycleId)}
+      onDragEnd={onDragEnd}
     >
       <div className={`p-3.5 ${group.gradient && group.gradient !== '' ? `bg-gradient-to-r ${group.gradient}` : 'bg-gradient-to-r from-gray-50 to-white'} rounded-t-lg border-b flex justify-between items-center text-white`}>
         <div className="flex-1 min-w-0 overflow-hidden mr-2">
@@ -140,14 +147,14 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
               </div>
             )}
             <button
-              onClick={() => onOpenColorPicker(group.id, 'group')}
+              onClick={() => onColorPickerOpen(group.id, 'group')}
               className="p-1.5 bg-white/20 rounded-md hover:bg-white/30 transition-all duration-200"
               title="Изменить цвет группы"
             >
               <Palette size={16} className="text-white" />
             </button>
             <button
-              onClick={() => onDeleteItem('group', group.id)}
+              onClick={() => handleDelete('group', group.id)}
               className="p-1.5 bg-white/20 rounded-md hover:bg-red-500/70 hover:text-white transition-all duration-200"
               title="Удалить группу"
             >
@@ -164,7 +171,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
             {isEditorMode && (
               <div className="flex justify-start px-4 pt-4 mb-4">
                 <button
-                  onClick={() => onOpenEditor('subgroup', group.id)}
+                  onClick={() => openEditModal('subgroup', group.id)}
                   className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
                 >
                   <Plus size={14} className="mr-1.5" />
@@ -185,7 +192,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                           {/* Здесь может быть заголовок или описание, если нужно */}
                         </div>
                         
-                        <div className="w-2/3">
+                        <div className="w-2-3">
                           {group.preparations ? (
                             <div>
                               <div 
@@ -197,7 +204,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                               {isEditorMode && (
                                 <div className="mt-2 flex justify-end">
                                   <button
-                                    onClick={() => onOpenEditor('group', group.id)}
+                                    onClick={() => openEditModal('group', group.id)}
                                     className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                                   >
                                     <Edit size={12} className="mr-1" />
@@ -210,7 +217,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
                               <div className="text-sm text-gray-500">Нет данных о препаратах</div>
                               <button
-                                onClick={() => onOpenEditor('group', group.id)}
+                                onClick={() => openEditModal('group', group.id)}
                                 className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-3"
                               >
                                 <Edit size={12} className="mr-1" />
@@ -241,8 +248,8 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                     onStartEditingTitle={onStartEditingTitle}
                     onFinishEditingTitle={onFinishEditingTitle}
                     onEditingTitleChange={onEditingTitleChange}
-                    onDeleteItem={onDeleteItem}
-                    onOpenEditor={onOpenEditor}
+                    onDeleteItem={(type, id) => onDeleteItem ? onDeleteItem(type, id) : handleDelete(type, id)}
+                    onOpenEditor={(type, parentId) => onOpenEditor ? onOpenEditor(type as 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId) : openEditModal(type, parentId)}
                   />
                 ))}
               </div>

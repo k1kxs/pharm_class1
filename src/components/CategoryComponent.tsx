@@ -71,7 +71,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
           )}
         </div>
         
-        <div className="w-2/3">
+        <div className="w-2-3">
           {category.preparations ? (
             <div>
               <div 

@@ -412,8 +412,8 @@ const ModernDrugClassification: React.FC = () => {
                     key={cycle.id}
                     cycle={cycle}
                     isExpanded={selectedCycles.includes(cycle.id)}
-                    onToggle={() => toggleCycle(cycle.id)}
                     isEditorMode={isEditorMode}
+                    onToggle={() => toggleCycle(cycle.id)}
                     onEdit={() => openEditModal('cycle', cycle.id)}
                     onDelete={() => handleDelete('cycle', cycle.id)}
                     onColorChange={() => openColorPicker(cycle.id, 'cycle')}
@@ -426,7 +426,7 @@ const ModernDrugClassification: React.FC = () => {
                     openEditModal={openEditModal}
                     handleDelete={handleDelete}
                     onColorPickerOpen={openColorPicker}
-                    onTableAdd={openTableModal}
+                    onTableAdd={() => openTableModal()}
                     onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragStart(e, cycle)}
                     onDragOver={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragOver(e, cycle)}
                     onDrop={(e: React.DragEvent<HTMLDivElement>) => handleCycleDrop(e, cycle)}

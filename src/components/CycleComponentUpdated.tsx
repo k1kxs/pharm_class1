@@ -11,15 +11,15 @@ interface CycleComponentProps {
   cycle: Cycle;
   isExpanded: boolean;
   isEditorMode: boolean;
-  isEditingTitle: boolean;
+  isEditingTitle: number | null;
   editingTitleValue: string;
   searchQuery?: string;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onColorChange: () => void;
-  onStartEditingTitle: () => void;
-  onFinishEditingTitle: () => void;
+  onStartEditingTitle: (type: string, item: any) => void;
+  onFinishEditingTitle: (type: string, id: number) => void;
   onEditingTitleChange: (value: string) => void;
   openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   handleDelete: (type: string, id: number) => void;
@@ -30,9 +30,9 @@ interface CycleComponentProps {
   onDragOver: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDragEnd: () => void;
-  onGroupDragStart: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDragOver: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDrop: (e: React.DragEvent, group: Group, cycleId: number) => void;
+  onGroupDragStart: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onGroupDragOver: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onGroupDrop: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
   onGroupDragEnd: () => void;
 }
 
@@ -77,7 +77,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       type: 'cycle',
       cycle
     },
-    disabled: !isEditorMode || isEditingTitle
+    disabled: Boolean(!isEditorMode || isEditingTitle)
   });
   
   // Применяем стили для элемента при перетаскивании
@@ -115,7 +115,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                 autoFocus
               />
               <button
-                onClick={onFinishEditingTitle}
+                onClick={() => onFinishEditingTitle('cycle', cycle.id)}
                 className="p-1.5 bg-white rounded-md text-gray-700 hover:bg-gray-200 transition-all duration-200 flex-shrink-0"
               >
                 <Edit size={16} />
@@ -139,7 +139,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onStartEditingTitle();
+                      onStartEditingTitle('cycle', cycle);
                     }}
                     className="ml-2 p-1.5 bg-gray-100 rounded-full hover:bg-gray-200 transition-all duration-200 opacity-0 group-hover:opacity-100 flex-shrink-0"
                   >
@@ -197,18 +197,18 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   group={group}
                   cycleId={cycle.id}
                   isEditorMode={isEditorMode}
-                  isEditingTitle={isEditingTitle === group.id}
+                  isEditingTitle={isEditingTitle}
                   editingTitleValue={editingTitleValue}
-                  onStartEditingTitle={() => onStartEditingTitle('group', group)}
-                  onFinishEditingTitle={() => onFinishEditingTitle('group', group.id)}
+                  onStartEditingTitle={onStartEditingTitle}
+                  onFinishEditingTitle={onFinishEditingTitle}
                   onEditingTitleChange={onEditingTitleChange}
                   openEditModal={openEditModal}
                   handleDelete={handleDelete}
                   onColorPickerOpen={onColorPickerOpen}
                   searchQuery={searchQuery}
-                  onDragStart={(e) => onGroupDragStart(e, group, cycle.id)}
-                  onDragOver={(e) => onGroupDragOver(e, group, cycle.id)}
-                  onDrop={(e) => onGroupDrop(e, group, cycle.id)}
+                  onDragStart={(e: React.DragEvent<HTMLDivElement>) => onGroupDragStart(e, group, cycle.id)}
+                  onDragOver={(e: React.DragEvent<HTMLDivElement>) => onGroupDragOver(e, group, cycle.id)}
+                  onDrop={(e: React.DragEvent<HTMLDivElement>) => onGroupDrop(e, group, cycle.id)}
                   onDragEnd={onGroupDragEnd}
                 />
               ))}

@@ -20,17 +20,18 @@ interface CycleComponentProps {
   onStartEditingTitle: () => void;
   onFinishEditingTitle: () => void;
   onEditingTitleChange: (value: string) => void;
-  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
+  openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   handleDelete: (type: string, id: number) => void;
-  onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group') => void;
+  onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
+  onTableAdd?: () => void;
   // Обработчики перетаскивания
   onDragStart: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDragOver: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>, cycle: Cycle) => void;
   onDragEnd: () => void;
-  onGroupDragStart: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDragOver: (e: React.DragEvent, group: Group, cycleId: number) => void;
-  onGroupDrop: (e: React.DragEvent, group: Group, cycleId: number) => void;
+  onGroupDragStart: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onGroupDragOver: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
+  onGroupDrop: (e: React.DragEvent<HTMLDivElement>, group: Group, cycleId: number) => void;
   onGroupDragEnd: () => void;
 }
 
@@ -51,6 +52,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
   openEditModal,
   handleDelete,
   onColorPickerOpen,
+  onTableAdd,
   onDragStart,
   onDragOver,
   onDrop,
@@ -198,13 +200,21 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   group={group}
                   cycleId={cycle.id}
                   isEditorMode={isEditorMode}
+                  isEditingTitle={null}
+                  editingTitleValue={editingTitleValue}
+                  onStartEditingTitle={() => {}}
+                  onFinishEditingTitle={() => {}}
+                  onEditingTitleChange={() => {}}
+                  openEditModal={openEditModal}
+                  handleDelete={handleDelete}
+                  onColorPickerOpen={onColorPickerOpen}
                   onDeleteItem={handleDelete}
                   onOpenEditor={openEditModal}
                   onOpenColorPicker={onColorPickerOpen}
-                  onGroupDragStart={onGroupDragStart}
-                  onGroupDragOver={onGroupDragOver}
-                  onGroupDrop={onGroupDrop}
-                  onGroupDragEnd={onGroupDragEnd}
+                  onDragStart={onGroupDragStart}
+                  onDragOver={onGroupDragOver}
+                  onDrop={onGroupDrop}
+                  onDragEnd={onGroupDragEnd}
                   searchQuery={searchQuery}
                 />
               ))}

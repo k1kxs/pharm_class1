@@ -786,11 +786,18 @@ div[dangerouslySetInnerHTML] {
 }
 
 /* Исправление для отступов препаратов без категории */
-.group-component .w-2/3,
-.subgroup-component .w-3/4,
-.category-component .w-3/5 {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+.group-component .w-2-3,
+.subgroup-component .w-2-3,
+.category-component .w-2-3 {
+  width: 66.666667%;
+  padding-left: 1rem;
+}
+
+.w-2-3 {
+  width: 66.666667%;
+  margin-left: auto;
+  padding-left: 1rem;
+  flex: 0 0 66.666667%;
 }
 
 /* Кнопки редактирования под плитками препаратов */
@@ -832,14 +839,6 @@ div[dangerouslySetInnerHTML] {
 
 .subgroup-component .rounded-lg {
   border-radius: 0.375rem !important;
-}
-
-/* Сдвиг элементов с препаратами правее */
-.w-2\/3 {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  width: 66% !important;
-  padding-left: 20% !important;
 }
 
 /* Контейнер для подгрупп */
