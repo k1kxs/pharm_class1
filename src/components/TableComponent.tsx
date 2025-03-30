@@ -265,6 +265,13 @@ const TableComponent: React.FC<TableComponentProps> = ({
     }
   };
 
+  // Эффект для закрытия редактора ячейки при выходе из режима редактирования
+  useEffect(() => {
+    if (!isEditorMode && activeCell) {
+      setActiveCell(null);
+    }
+  }, [isEditorMode, activeCell]);
+
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden mb-6"
@@ -418,7 +425,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
                         onClick={() => isEditorMode && !isActiveCell && handleCellClick(rowIndex, cellIndex)}
                       >
                         {isActiveCell ? (
-                          <div className="cell-editor-container">
+                          <div className="cell-editor-container quill-wrapper">
                             <style dangerouslySetInnerHTML={{ __html: `
                               /* Убираем отступы для редактора в ячейке */
                               .table-cell-editor .ql-toolbar {
@@ -454,7 +461,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
                                 <button
                                   type="button"
                                   onClick={handleCloseEditor}
-                                  className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                  className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors close-editor-btn"
                                 >
                                   Готово
                                 </button>

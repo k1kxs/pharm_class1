@@ -298,6 +298,16 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   
   // Выход из режима редактирования
   const exitEditorMode = () => {
+    // Сбрасываем любые активные редакторы таблиц
+    const tableCells = document.querySelectorAll('.ql-editor');
+    tableCells.forEach(cell => {
+      // Закрываем редактор, имитируя клик за его пределами
+      const closeButton = cell.closest('.quill-wrapper')?.querySelector('.close-editor-btn');
+      if (closeButton) {
+        (closeButton as HTMLElement).click();
+      }
+    });
+    
     setIsEditorMode(false);
     // Выход из системы при выходе из режима редактирования
     logout();
