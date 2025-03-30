@@ -53,6 +53,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
 }) => {
   const [isGroupExpanded, setIsGroupExpanded] = React.useState(false);
   const [isEditingMedications, setIsEditingMedications] = React.useState(true);
+  const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
   
   // Используем хук useSortable из @dnd-kit/sortable для улучшенного drag-and-drop
   const {
@@ -122,7 +123,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                 }
               </div>
               
-              <h3 className="text-lg font-medium flex items-center px-2 py-1 min-w-0 max-w-full">
+              <h3 className="text-lg font-bold flex items-center px-2 py-1 min-w-0 max-w-full">
                 <span className="break-words break-all whitespace-normal w-full">{group.name}</span>
                 {isEditorMode && (
                   <button
@@ -180,21 +181,20 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                   <Plus size={14} className="mr-1.5" />
                   <span className="font-medium">Добавить подгруппу</span>
                 </button>
-                <button
-                  onClick={() => {
-                    openEditModal('group', group.id);
-                    setIsEditingMedications(true);
-                  }}
-                  className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-                >
-                  <Edit size={14} className="mr-1.5" />
-                  <span className="font-medium">Редактировать список</span>
-                </button>
+                {!group.preparations && (
+                  <button
+                    onClick={() => setShowEmptyMedicationsPlaceholder(true)}
+                    className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+                  >
+                    <Plus size={14} className="mr-1.5" />
+                    <span className="font-medium">Добавить препараты</span>
+                  </button>
+                )}
               </div>
             )}
 
             {/* Препараты группы, если есть */}
-            {(group.preparations || isEditorMode) && (
+            {(group.preparations || (isEditorMode && showEmptyMedicationsPlaceholder)) && (
               <div className="px-4">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   {/* Блок для препаратов группы */}
@@ -224,7 +224,10 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                                     Редактировать препараты
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteMedications && handleDeleteMedications('group', group.id)}
+                                    onClick={() => {
+                                      handleDeleteMedications && handleDeleteMedications('group', group.id);
+                                      setShowEmptyMedicationsPlaceholder(false);
+                                    }}
                                     className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
                                   >
                                     <Trash size={12} className="mr-1" />
@@ -233,18 +236,30 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                                 </div>
                               )}
                             </div>
-                          ) : isEditorMode && (
-                            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
-                              <div className="text-sm text-gray-500">Нет данных о препаратах</div>
-                              {isEditorMode && (
+                          ) : isEditorMode && showEmptyMedicationsPlaceholder && (
+                            <div>
+                              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                                <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                              </div>
+                              <div className="mt-2 flex justify-end">
                                 <button
                                   onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
-                                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                                 >
                                   <Edit size={12} className="mr-1" />
-                                  Добавить препараты
+                                  Редактировать препараты
                                 </button>
-                              )}
+                                <button
+                                  onClick={() => {
+                                    handleDeleteMedications && handleDeleteMedications('group', group.id);
+                                    setShowEmptyMedicationsPlaceholder(false);
+                                  }}
+                                  className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                                >
+                                  <Trash size={12} className="mr-1" />
+                                  Удалить препараты
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

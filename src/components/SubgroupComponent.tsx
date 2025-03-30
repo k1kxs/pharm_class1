@@ -35,6 +35,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
 }) => {
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
   const [isEditingMedications, setIsEditingMedications] = React.useState(true);
+  const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow subgroup-component mb-4 last:mb-0">
@@ -69,7 +70,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 }
               </div>
               
-              <h4 className="text-base font-medium flex items-center text-gray-700 min-w-0 max-w-full">
+              <h4 className="text-lg font-bold flex items-center text-gray-700 min-w-0 max-w-full">
                 <span className="break-words break-all whitespace-normal w-full">{subgroup.name}</span>
                 {isEditorMode && (
                   <button
@@ -110,21 +111,20 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 <Plus size={14} className="mr-1.5" />
                 <span className="font-medium">Добавить категорию</span>
               </button>
-              <button
-                onClick={() => {
-                  onOpenEditor('subgroup', subgroup.id);
-                  setIsEditingMedications(true);
-                }}
-                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-              >
-                <Edit size={14} className="mr-1.5" />
-                <span className="font-medium">Редактировать список</span>
-              </button>
+              {!subgroup.preparations && (
+                <button
+                  onClick={() => setShowEmptyMedicationsPlaceholder(true)}
+                  className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  <span className="font-medium">Добавить препараты</span>
+                </button>
+              )}
             </div>
           )}
 
           {/* Препараты подгруппы, если есть */}
-          {(subgroup.preparations || isEditorMode) && (
+          {(subgroup.preparations || (isEditorMode && showEmptyMedicationsPlaceholder)) && (
             <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component mb-4">
               <div className="flex justify-between items-start">
                 <div className="w-1/3 pr-4 min-w-0 overflow-hidden">
@@ -150,7 +150,10 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                             Редактировать препараты
                           </button>
                           <button
-                            onClick={() => handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id)}
+                            onClick={() => {
+                              handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
+                              setShowEmptyMedicationsPlaceholder(false);
+                            }}
                             className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
                           >
                             <Trash size={12} className="mr-1" />
@@ -159,18 +162,30 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                         </div>
                       )}
                     </div>
-                  ) : isEditorMode && (
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
-                      <div className="text-sm text-gray-500">Нет данных о препаратах</div>
-                      {isEditorMode && (
+                  ) : isEditorMode && showEmptyMedicationsPlaceholder && (
+                    <div>
+                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                        <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                      </div>
+                      <div className="mt-2 flex justify-end">
                         <button
                           onClick={() => onOpenEditor('subgroup', subgroup.id)}
-                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                         >
                           <Edit size={12} className="mr-1" />
-                          Добавить препараты
+                          Редактировать препараты
                         </button>
-                      )}
+                        <button
+                          onClick={() => {
+                            handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id);
+                            setShowEmptyMedicationsPlaceholder(false);
+                          }}
+                          className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                        >
+                          <Trash size={12} className="mr-1" />
+                          Удалить препараты
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

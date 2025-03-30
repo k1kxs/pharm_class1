@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Trash, ArrowRight } from 'lucide-react';
+import { Edit, Trash, ArrowRight, Plus } from 'lucide-react';
 import { Category } from './types';
 
 interface CategoryComponentProps {
@@ -34,6 +34,8 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   onOpenEditor,
   handleDeleteMedications
 }) => {
+  const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
+
   return (
     <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component">
       <div className="flex justify-between items-start">
@@ -55,7 +57,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
               </button>
             </div>
           ) : (
-            <h5 className="text-base font-semibold flex items-center text-gray-800 group">
+            <h5 className="text-base font-semibold flex items-center text-gray-800 group pl-6">
               <ArrowRight size={15} className="mr-1.5 text-indigo-500 flex-shrink-0" />
               <span className="break-words break-all whitespace-normal w-full">{category.name}</span>
               {isEditorMode && (
@@ -70,6 +72,18 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                 </button>
               )}
             </h5>
+          )}
+          
+          {isEditorMode && !category.preparations && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowEmptyMedicationsPlaceholder(true)}
+                className="px-2.5 py-1 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+              >
+                <Plus size={12} className="mr-1" />
+                Добавить препараты
+              </button>
+            </div>
           )}
         </div>
         
@@ -91,27 +105,24 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                     <Edit size={12} className="mr-1" />
                     Редактировать препараты
                   </button>
-                  <button
-                    onClick={() => handleDeleteMedications && handleDeleteMedications('category', category.id)}
-                    className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
-                  >
-                    <Trash size={12} className="mr-1" />
-                    Удалить препараты
-                  </button>
                 </div>
               )}
             </div>
-          ) : isEditorMode ? (
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
-              <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+          ) : isEditorMode && showEmptyMedicationsPlaceholder ? (
+            <div>
+              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+              </div>
               {onOpenEditor && (
-                <button
-                  onClick={() => onOpenEditor('category', category.id)}
-                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
-                >
-                  <Edit size={12} className="mr-1" />
-                  Добавить препараты
-                </button>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    onClick={() => onOpenEditor('category', category.id)}
+                    className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                  >
+                    <Edit size={12} className="mr-1" />
+                    Редактировать препараты
+                  </button>
+                </div>
               )}
             </div>
           ) : null}

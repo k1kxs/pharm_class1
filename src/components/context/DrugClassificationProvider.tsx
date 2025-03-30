@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
 import DrugClassificationContext, { DrugClassificationContextType } from './DrugClassificationContext';
 import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory, Table, TableRow, TableCell } from '../types';
 import { textContainsQuery } from '../utils/textUtils';
@@ -6,9 +6,10 @@ import PDFGenerator from '../PDFGenerator';
 import { useAuth } from './AuthProvider';
 import { dataAPI } from '../../services/api';
 // Импорт компонентов из @dnd-kit
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { debounce } from 'lodash';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface DrugClassificationProviderProps {
   children: React.ReactNode;
@@ -67,6 +68,14 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [newTableRows, setNewTableRows] = useState<number>(3);
   const [newTableColumns, setNewTableColumns] = useState<number>(3);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  
+  // Состояния для модальных окон подтверждения
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDialogProps, setConfirmDialogProps] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
   
   // Конфигурация сенсоров DnD (для мыши и тач-устройств)
   const sensors = useSensors(
@@ -774,80 +783,83 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   
   // Обработчик удаления элементов
   const handleDelete = (type: string, id: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот элемент?')) {
-      return;
-    }
-    
-    let newCycles = [...cycles];
-    
-    switch (type) {
-      case 'cycle':
-        newCycles = newCycles.filter(cycle => cycle.id !== id);
-        break;
+    setConfirmDialogProps({
+      title: 'Подтверждение удаления',
+      message: 'Вы уверены, что хотите удалить этот элемент?',
+      onConfirm: () => {
+        let newCycles = [...cycles];
         
-      case 'group':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.filter(group => group.id !== id)
-          }
-        });
-        break;
-        
-      case 'subgroup':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
+        switch (type) {
+          case 'cycle':
+            newCycles = newCycles.filter(cycle => cycle.id !== id);
+            break;
+            
+          case 'group':
+            newCycles = newCycles.map(cycle => {
               return {
-                ...group,
-                subgroups: group.subgroups.filter(subgroup => subgroup.id !== id)
+                ...cycle,
+                groups: cycle.groups.filter(group => group.id !== id)
               }
-            })
-          }
-        });
-        break;
-        
-      case 'category':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
+            });
+            break;
+            
+          case 'subgroup':
+            newCycles = newCycles.map(cycle => {
               return {
-                ...group,
-                subgroups: group.subgroups.map(subgroup => {
+                ...cycle,
+                groups: cycle.groups.map(group => {
                   return {
-                    ...subgroup,
-                    categories: subgroup.categories.filter(category => category.id !== id)
+                    ...group,
+                    subgroups: group.subgroups.filter(subgroup => subgroup.id !== id)
                   }
                 })
               }
-            })
-          }
-        });
-        break;
-      
-      case 'table':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
+            });
+            break;
+            
+          case 'category':
+            newCycles = newCycles.map(cycle => {
               return {
-                ...group,
-                subgroups: group.subgroups.map(subgroup => {
+                ...cycle,
+                groups: cycle.groups.map(group => {
                   return {
-                    ...subgroup,
-                    categories: subgroup.categories.filter(category => category.id !== id)
+                    ...group,
+                    subgroups: group.subgroups.map(subgroup => {
+                      return {
+                        ...subgroup,
+                        categories: subgroup.categories.filter(category => category.id !== id)
+                      }
+                    })
                   }
                 })
               }
-            })
-          }
-        });
-        break;
-    }
-    
-    setCycles(newCycles);
+            });
+            break;
+          
+          case 'table':
+            newCycles = newCycles.map(cycle => {
+              return {
+                ...cycle,
+                groups: cycle.groups.map(group => {
+                  return {
+                    ...group,
+                    subgroups: group.subgroups.map(subgroup => {
+                      return {
+                        ...subgroup,
+                        categories: subgroup.categories.filter(category => category.id !== id)
+                      }
+                    })
+                  }
+                })
+              }
+            });
+            break;
+        }
+        
+        setCycles(newCycles);
+      }
+    });
+    setConfirmDialogOpen(true);
   }
   
   // Обработчики для DnD-kit
@@ -1363,81 +1375,84 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
 
   // Обработчик для удаления препаратов без открытия модального окна
   const handleDeleteMedications = (type: string, id: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить препараты?')) {
-      return;
-    }
-    
-    let newCycles = [...cycles];
-    
-    switch (type) {
-      case 'group':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
-              if (group.id === id) {
-                return {
-                  ...group,
-                  preparations: ''
-                };
-              }
-              return group;
-            })
-          };
-        });
-        break;
+    setConfirmDialogProps({
+      title: 'Подтверждение удаления',
+      message: 'Вы уверены, что хотите удалить препараты?',
+      onConfirm: () => {
+        let newCycles = [...cycles];
         
-      case 'subgroup':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
+        switch (type) {
+          case 'group':
+            newCycles = newCycles.map(cycle => {
               return {
-                ...group,
-                subgroups: group.subgroups.map(subgroup => {
-                  if (subgroup.id === id) {
+                ...cycle,
+                groups: cycle.groups.map(group => {
+                  if (group.id === id) {
                     return {
-                      ...subgroup,
+                      ...group,
                       preparations: ''
                     };
                   }
-                  return subgroup;
+                  return group;
                 })
               };
-            })
-          };
-        });
-        break;
-        
-      case 'category':
-        newCycles = newCycles.map(cycle => {
-          return {
-            ...cycle,
-            groups: cycle.groups.map(group => {
+            });
+            break;
+            
+          case 'subgroup':
+            newCycles = newCycles.map(cycle => {
               return {
-                ...group,
-                subgroups: group.subgroups.map(subgroup => {
+                ...cycle,
+                groups: cycle.groups.map(group => {
                   return {
-                    ...subgroup,
-                    categories: subgroup.categories.map(category => {
-                      if (category.id === id) {
+                    ...group,
+                    subgroups: group.subgroups.map(subgroup => {
+                      if (subgroup.id === id) {
                         return {
-                          ...category,
+                          ...subgroup,
                           preparations: ''
                         };
                       }
-                      return category;
+                      return subgroup;
                     })
                   };
                 })
               };
-            })
-          };
-        });
-        break;
-    }
-    
-    setCycles(newCycles);
+            });
+            break;
+            
+          case 'category':
+            newCycles = newCycles.map(cycle => {
+              return {
+                ...cycle,
+                groups: cycle.groups.map(group => {
+                  return {
+                    ...group,
+                    subgroups: group.subgroups.map(subgroup => {
+                      return {
+                        ...subgroup,
+                        categories: subgroup.categories.map(category => {
+                          if (category.id === id) {
+                            return {
+                              ...category,
+                              preparations: ''
+                            };
+                          }
+                          return category;
+                        })
+                      };
+                    })
+                  };
+                })
+              };
+            });
+            break;
+        }
+        
+        setCycles(newCycles);
+      }
+    });
+    setConfirmDialogOpen(true);
   };
 
   // Обёртка для secure-вызова handleDeleteMedications
@@ -1554,6 +1569,13 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   return (
     <DrugClassificationContext.Provider value={contextValue}>
       {children}
+      <ConfirmDialog
+        isOpen={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        onConfirm={confirmDialogProps.onConfirm}
+        title={confirmDialogProps.title}
+        message={confirmDialogProps.message}
+      />
     </DrugClassificationContext.Provider>
   );
 }; 
