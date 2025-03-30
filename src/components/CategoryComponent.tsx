@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit, Trash, ArrowRight, Plus } from 'lucide-react';
 import { Category } from './types';
+import TableComponent from './TableComponent';
 
 interface CategoryComponentProps {
   category: Category;
@@ -17,7 +18,7 @@ interface CategoryComponentProps {
   onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   searchQuery?: string;
   handleDeleteMedications?: (type: string, id: number) => void;
-  openTableModal?: (groupId?: number) => void;
+  openTableModal?: (groupId?: number, categoryId?: number) => void;
 }
 
 const CategoryComponent: React.FC<CategoryComponentProps> = ({
@@ -86,7 +87,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                 Добавить препараты
               </button>
               <button
-                onClick={() => openTableModal && openTableModal(groupId)}
+                onClick={() => openTableModal && openTableModal(groupId, category.id)}
                 className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm mt-2"
               >
                 <Plus size={12} className="mr-1" />
@@ -97,6 +98,25 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
         </div>
         
         <div className="w-2-3">
+          {/* Таблицы категории, если они есть */}
+          {category.tables && category.tables.length > 0 && (
+            <div className="mb-4">
+              <div className="space-y-4">
+                {category.tables.map((table) => (
+                  <TableComponent
+                    key={table.id}
+                    table={table}
+                    isEditorMode={isEditorMode}
+                    hideHeader={true}
+                    groupId={groupId}
+                    categoryId={category.id}
+                    onDelete={() => onDeleteItem('table', table.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          
           {category.preparations ? (
             <div>
               <div 

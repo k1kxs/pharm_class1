@@ -67,7 +67,7 @@ export interface DrugClassificationActions {
   
   // Действия для таблиц
   setTables: (tables: Table[]) => void;
-  openTableModal: () => void;
+  openTableModal: (parentId?: number, categoryId?: number) => void;
   closeTableModal: () => void;
   setNewTableName: (name: string) => void;
   setNewTableGradient: (gradient: string) => void;
@@ -149,6 +149,22 @@ export interface DrugClassificationActions {
   addTableColumnInGroup: (groupId: number, tableId: number) => void;
   removeTableRowInGroup: (groupId: number, tableId: number, rowIndex: number) => void;
   removeTableColumnInGroup: (groupId: number, tableId: number, columnIndex: number) => void;
+  
+  // Функции для работы с таблицами внутри категорий
+  updateCategoryTableCell: (groupId: number, categoryId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => void;
+  addTableRowInCategory: (groupId: number, categoryId: number, tableId: number) => void;
+  addTableColumnInCategory: (groupId: number, categoryId: number, tableId: number) => void;
+  removeTableRowInCategory: (groupId: number, categoryId: number, tableId: number, rowIndex: number) => void;
+  removeTableColumnInCategory: (groupId: number, categoryId: number, tableId: number, columnIndex: number) => void;
+  
+  // Функции для работы с таблицами внутри подгрупп
+  updateSubgroupTableCell: (groupId: number, subgroupId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => void;
+  addTableRowInSubgroup: (groupId: number, subgroupId: number, tableId: number) => void;
+  addTableColumnInSubgroup: (groupId: number, subgroupId: number, tableId: number) => void;
+  removeTableRowInSubgroup: (groupId: number, subgroupId: number, tableId: number, rowIndex: number) => void;
+  removeTableColumnInSubgroup: (groupId: number, subgroupId: number, tableId: number, columnIndex: number) => void;
+  moveTableInSubgroup: (groupId: number, subgroupId: number, sourceIndex: number, targetIndex: number) => void;
+  removeSubgroupTable: (groupId: number, subgroupId: number, tableId: number) => void;
 }
 
 // Создаем тип для полного контекста (состояние + действия)

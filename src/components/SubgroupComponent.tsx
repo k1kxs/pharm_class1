@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit, Trash, Plus, CornerDownRight, ArrowRight } from 'lucide-react';
-import { Subgroup, Category } from './types';
+import { Subgroup, Category, Table } from './types';
 import CategoryComponent from './CategoryComponent';
+import TableComponent from './TableComponent';
+import { useDrugClassification } from './context/DrugClassificationContext';
 
 interface SubgroupComponentProps {
   subgroup: Subgroup;
@@ -17,7 +19,7 @@ interface SubgroupComponentProps {
   onOpenEditor: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   searchQuery?: string;
   handleDeleteMedications?: (type: string, id: number) => void;
-  openTableModal?: (groupId?: number) => void;
+  openTableModal?: (groupId?: number, categoryId?: number) => void;
 }
 
 const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
@@ -38,6 +40,63 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
   const [isEditingMedications, setIsEditingMedications] = React.useState(true);
   const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
+  
+  // Состояния для drag-and-drop таблиц
+  const [draggedTable, setDraggedTable] = useState<Table | null>(null);
+  const [dragOverTable, setDragOverTable] = useState<Table | null>(null);
+  
+  // Получаем функции для работы с таблицами из контекста
+  const {
+    moveTableInSubgroup,
+    updateSubgroupTableCell,
+    addTableRowInSubgroup,
+    addTableColumnInSubgroup,
+    removeTableRowInSubgroup,
+    removeTableColumnInSubgroup,
+    removeSubgroupTable
+  } = useDrugClassification();
+  
+  // Обработчики для перетаскивания таблиц
+  const handleTableDragStart = (e: React.DragEvent<HTMLDivElement>, table: Table) => {
+    // Остановка распространения события
+    e.stopPropagation();
+    // Установка передаваемых данных
+    e.dataTransfer.setData('text/plain', table.id.toString());
+    // Установка эффекта перетаскивания
+    e.dataTransfer.effectAllowed = 'move';
+    // Установка перетаскиваемой таблицы
+    setDraggedTable(table);
+  };
+  
+  const handleTableDragOver = (e: React.DragEvent<HTMLDivElement>, table: Table) => {
+    e.preventDefault();
+    if (draggedTable && draggedTable.id !== table.id) {
+      setDragOverTable(table);
+    }
+  };
+  
+  const handleTableDrop = (e: React.DragEvent<HTMLDivElement>, targetTable: Table) => {
+    e.preventDefault();
+    
+    if (draggedTable && draggedTable.id !== targetTable.id && subgroup.tables) {
+      // Найти индексы перетаскиваемой и целевой таблиц
+      const draggedIndex = subgroup.tables.findIndex(t => t.id === draggedTable.id);
+      const targetIndex = subgroup.tables.findIndex(t => t.id === targetTable.id);
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        // Используем функцию из контекста для перемещения таблиц
+        moveTableInSubgroup(groupId, subgroup.id, draggedIndex, targetIndex);
+      }
+    }
+    
+    setDraggedTable(null);
+    setDragOverTable(null);
+  };
+  
+  const handleTableDragEnd = () => {
+    setDraggedTable(null);
+    setDragOverTable(null);
+  };
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow subgroup-component mb-4 last:mb-0">
@@ -114,7 +173,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 <span className="font-medium">Добавить категорию</span>
               </button>
               <button
-                onClick={() => openTableModal ? openTableModal(groupId) : onOpenEditor('table', subgroup.id)}
+                onClick={() => openTableModal ? openTableModal(groupId, subgroup.id) : onOpenEditor('table', subgroup.id)}
                 className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
               >
                 <Plus size={14} className="mr-1.5" />
@@ -129,6 +188,30 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                   <span className="font-medium">Добавить препараты</span>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Таблицы подгруппы, если они есть */}
+          {subgroup.tables && subgroup.tables.length > 0 && (
+            <div className="mb-4">
+              <div className="space-y-4">
+                {subgroup.tables.map((table) => (
+                  <TableComponent
+                    key={table.id}
+                    table={table}
+                    isEditorMode={isEditorMode}
+                    hideHeader={true}
+                    groupId={groupId}
+                    categoryId={subgroup.id}
+                    onDelete={() => removeSubgroupTable(groupId, subgroup.id, table.id)}
+                    draggable={isEditorMode}
+                    onDragStart={(e) => handleTableDragStart(e, table)}
+                    onDragOver={(e) => handleTableDragOver(e, table)}
+                    onDrop={(e) => handleTableDrop(e, table)}
+                    onDragEnd={handleTableDragEnd}
+                  />
+                ))}
+              </div>
             </div>
           )}
 

@@ -69,6 +69,8 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [newTableColumns, setNewTableColumns] = useState<number>(3);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [tableParentId, setTableParentId] = useState<number | null>(null); // ID родительской группы
+  const [categoryParentId, setCategoryParentId] = useState<number | null>(null); // ID родительской категории
+  const [subgroupParentId, setSubgroupParentId] = useState<number | null>(null); // ID родительской подгруппы
   
   // Состояния для модальных окон подтверждения
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -1179,19 +1181,43 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   }
   
   // Открытие модального окна для создания таблицы
-  const openTableModal = useCallback((parentId?: number) => {
+  const openTableModal = useCallback((parentId?: number, subgroupOrCategoryId?: number) => {
     // Проверка сессии перед действием
     checkSessionBeforeAction(() => {
       setTableModalOpen(true);
       // Сохраняем ID родительской группы
       setTableParentId(parentId || null);
+      
+      // Проверим, является ли переданный ID идентификатором подгруппы
+      if (subgroupOrCategoryId) {
+        const isSubgroup = cycles.some(cycle => 
+          cycle.groups.some(group => 
+            group.subgroups.some(subgroup => subgroup.id === subgroupOrCategoryId)
+          )
+        );
+        
+        if (isSubgroup) {
+          // Это ID подгруппы
+          setSubgroupParentId(subgroupOrCategoryId);
+          setCategoryParentId(null);
+        } else {
+          // Это ID категории
+          setCategoryParentId(subgroupOrCategoryId);
+          setSubgroupParentId(null);
+        }
+      } else {
+        // Если ID не передан, сбрасываем оба значения
+        setCategoryParentId(null);
+        setSubgroupParentId(null);
+      }
+      
       // Устанавливаем значения по умолчанию
       setNewTableName(`Таблица ${new Date().toLocaleString('ru')}`);
       setNewTableGradient('from-blue-500 via-indigo-500 to-violet-600');
       setNewTableRows(3);
       setNewTableColumns(3);
     });
-  }, [checkSessionBeforeAction]);
+  }, [checkSessionBeforeAction, cycles]);
 
   // Закрытие модального окна создания таблицы
   const closeTableModal = useCallback(() => {
@@ -1206,12 +1232,6 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
 
   // Создание новой таблицы
   const createTable = useCallback(() => {
-    // Проверяем наличие parentId
-    if (tableParentId === null) return;
-    
-    // Генерируем новый ID
-    const newId = Date.now();
-    
     // Создаем ячейки для таблицы
     const rows: TableRow[] = [];
     for (let r = 0; r < newTableRows; r++) {
@@ -1230,38 +1250,115 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     
     // Создаем новую таблицу без названия
     const newTable: Table = {
-      id: newId,
-      name: '', // Пустое название
-      gradient: '', // Без градиента
+      id: Date.now(),
+      name: newTableName,
+      gradient: newTableGradient,
       rows,
       columns: newTableColumns
     };
     
-    // Добавляем таблицу в соответствующую группу
-    setCycles(prevCycles => {
-      return prevCycles.map(cycle => {
-        // Ищем группу по ID
-        const updatedGroups = cycle.groups.map(group => {
-          if (group.id === tableParentId) {
-            // Если нашли нужную группу, добавляем таблицу
-            return {
-              ...group,
-              tables: [...(group.tables || []), newTable]
-            };
-          }
-          return group;
+    // Если указан ID категории, добавляем таблицу в категорию
+    if (categoryParentId !== null && tableParentId !== null) {
+      setCycles(prevCycles => {
+        return prevCycles.map(cycle => {
+          // Ищем группу по ID
+          const updatedGroups = cycle.groups.map(group => {
+            if (group.id === tableParentId) {
+              // Ищем категорию в подгруппах
+              const updatedSubgroups = group.subgroups.map(subgroup => {
+                const updatedCategories = subgroup.categories.map(category => {
+                  if (category.id === categoryParentId) {
+                    // Добавляем таблицу в категорию
+                    return {
+                      ...category,
+                      tables: [...(category.tables || []), newTable]
+                    };
+                  }
+                  return category;
+                });
+                
+                return {
+                  ...subgroup,
+                  categories: updatedCategories
+                };
+              });
+              
+              return {
+                ...group,
+                subgroups: updatedSubgroups
+              };
+            }
+            return group;
+          });
+          
+          return {
+            ...cycle,
+            groups: updatedGroups
+          };
         });
-        
-        return {
-          ...cycle,
-          groups: updatedGroups
-        };
       });
-    });
+    } 
+    // Если указан ID подгруппы, добавляем таблицу в подгруппу
+    else if (subgroupParentId !== null && tableParentId !== null) {
+      setCycles(prevCycles => {
+        return prevCycles.map(cycle => {
+          // Ищем группу по ID
+          const updatedGroups = cycle.groups.map(group => {
+            if (group.id === tableParentId) {
+              // Ищем подгруппу по ID
+              const updatedSubgroups = group.subgroups.map(subgroup => {
+                if (subgroup.id === subgroupParentId) {
+                  // Добавляем таблицу в подгруппу
+                  return {
+                    ...subgroup,
+                    tables: [...(subgroup.tables || []), newTable]
+                  };
+                }
+                return subgroup;
+              });
+              
+              return {
+                ...group,
+                subgroups: updatedSubgroups
+              };
+            }
+            return group;
+          });
+          
+          return {
+            ...cycle,
+            groups: updatedGroups
+          };
+        });
+      });
+    }
+    // Если указан только ID группы
+    else if (tableParentId !== null) {
+      setCycles(prevCycles => {
+        return prevCycles.map(cycle => {
+          // Ищем группу по ID
+          const updatedGroups = cycle.groups.map(group => {
+            if (group.id === tableParentId) {
+              // Если нашли нужную группу, добавляем таблицу
+              return {
+                ...group,
+                tables: [...(group.tables || []), newTable]
+              };
+            }
+            return group;
+          });
+          
+          return {
+            ...cycle,
+            groups: updatedGroups
+          };
+        });
+      });
+    }
     
     // Закрываем модальное окно
     closeTableModal();
-  }, [tableParentId, newTableRows, newTableColumns, closeTableModal]);
+  }, [tableParentId, categoryParentId, subgroupParentId, newTableName, newTableGradient, newTableRows, newTableColumns, closeTableModal]);
 
   // Обновление ячейки таблицы
   const updateTableCell = useCallback((tableId: number, rowIndex: number, cellIndex: number, content: string) => {
@@ -1695,13 +1792,11 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             // Ищем таблицу по ID
             const updatedTables = group.tables.map(table => {
               if (table.id === tableId) {
-                // Проверка, чтобы не удалить все строки
-                if (table.rows.length <= 1) {
-                  return table;
+                // Удаляем строку из таблицы
+                const updatedRows = [...table.rows];
+                if (rowIndex >= 0 && rowIndex < updatedRows.length) {
+                  updatedRows.splice(rowIndex, 1);
                 }
-                
-                // Фильтруем строки, исключая удаляемую
-                const updatedRows = table.rows.filter((_, index) => index !== rowIndex);
                 
                 // Возвращаем обновленную таблицу
                 return {
@@ -1729,7 +1824,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     });
   }, []);
 
-  // Удаление столбца в таблице внутри группы
+  // Удаление столбца из таблицы внутри группы
   const removeTableColumnInGroup = useCallback((groupId: number, tableId: number, columnIndex: number) => {
     setCycles(prevCycles => {
       return prevCycles.map(cycle => {
@@ -1739,16 +1834,16 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             // Ищем таблицу по ID
             const updatedTables = group.tables.map(table => {
               if (table.id === tableId) {
-                // Проверка, чтобы не удалить все столбцы
-                if (table.columns <= 1) {
-                  return table;
-                }
-                
-                // Обновляем каждую строку, удаляя ячейку в указанной позиции
+                // Удаляем столбец из каждой строки
                 const updatedRows = table.rows.map(row => {
+                  const updatedCells = [...row.cells];
+                  if (columnIndex >= 0 && columnIndex < updatedCells.length) {
+                    updatedCells.splice(columnIndex, 1);
+                  }
+                  
                   return {
                     ...row,
-                    cells: row.cells.filter((_, index) => index !== columnIndex)
+                    cells: updatedCells
                   };
                 });
                 
@@ -1766,6 +1861,668 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
             return {
               ...group,
               tables: updatedTables
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Функции для работы с таблицами внутри категорий
+  const updateCategoryTableCell = useCallback((groupId: number, categoryId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        return {
+          ...cycle,
+          groups: cycle.groups.map(group => {
+            if (group.id === groupId) {
+              return {
+                ...group,
+                subgroups: group.subgroups.map(subgroup => {
+                  return {
+                    ...subgroup,
+                    categories: subgroup.categories.map(category => {
+                      if (category.id === categoryId && category.tables) {
+                        return {
+                          ...category,
+                          tables: category.tables.map(table => {
+                            if (table.id === tableId) {
+                              const updatedRows = [...table.rows];
+                              if (updatedRows[rowIndex] && updatedRows[rowIndex].cells[cellIndex]) {
+                                updatedRows[rowIndex] = {
+                                  ...updatedRows[rowIndex],
+                                  cells: updatedRows[rowIndex].cells.map((cell, idx) => {
+                                    if (idx === cellIndex) {
+                                      return { ...cell, content };
+                                    }
+                                    return cell;
+                                  })
+                                };
+                              }
+                              return { ...table, rows: updatedRows };
+                            }
+                            return table;
+                          })
+                        };
+                      }
+                      return category;
+                    })
+                  };
+                })
+              };
+            }
+            return group;
+          })
+        };
+      });
+    });
+  }, []);
+
+  // Добавление строки в таблицу внутри категории
+  const addTableRowInCategory = useCallback((groupId: number, categoryId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем категорию в подгруппах
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              const updatedCategories = subgroup.categories.map(category => {
+                if (category.id === categoryId && category.tables) {
+                  // Ищем таблицу по ID
+                  const updatedTables = category.tables.map(table => {
+                    if (table.id === tableId) {
+                      // Создаем новые ячейки для новой строки
+                      const newCells = [];
+                      for (let c = 0; c < table.columns; c++) {
+                        newCells.push({
+                          id: Date.now() + c,
+                          content: ''
+                        });
+                      }
+                      
+                      // Создаем новую строку
+                      const newRow = {
+                        id: Date.now(),
+                        cells: newCells
+                      };
+                      
+                      // Возвращаем обновленную таблицу с новой строкой
+                      return {
+                        ...table,
+                        rows: [...table.rows, newRow]
+                      };
+                    }
+                    return table;
+                  });
+                  
+                  // Возвращаем обновленную категорию с обновленными таблицами
+                  return {
+                    ...category,
+                    tables: updatedTables
+                  };
+                }
+                return category;
+              });
+              
+              return {
+                ...subgroup,
+                categories: updatedCategories
+              };
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Добавление столбца в таблицу внутри категории
+  const addTableColumnInCategory = useCallback((groupId: number, categoryId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем категорию в подгруппах
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              const updatedCategories = subgroup.categories.map(category => {
+                if (category.id === categoryId && category.tables) {
+                  // Ищем таблицу по ID
+                  const updatedTables = category.tables.map(table => {
+                    if (table.id === tableId) {
+                      // Обновляем каждую строку, добавляя новую ячейку
+                      const updatedRows = table.rows.map(row => {
+                        return {
+                          ...row,
+                          cells: [
+                            ...row.cells,
+                            { id: Date.now() + row.id, content: '' }
+                          ]
+                        };
+                      });
+                      
+                      // Возвращаем обновленную таблицу
+                      return {
+                        ...table,
+                        rows: updatedRows,
+                        columns: table.columns + 1
+                      };
+                    }
+                    return table;
+                  });
+                  
+                  // Возвращаем обновленную категорию
+                  return {
+                    ...category,
+                    tables: updatedTables
+                  };
+                }
+                return category;
+              });
+              
+              return {
+                ...subgroup,
+                categories: updatedCategories
+              };
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление строки из таблицы внутри категории
+  const removeTableRowInCategory = useCallback((groupId: number, categoryId: number, tableId: number, rowIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем категорию в подгруппах
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              const updatedCategories = subgroup.categories.map(category => {
+                if (category.id === categoryId && category.tables) {
+                  // Ищем таблицу по ID
+                  const updatedTables = category.tables.map(table => {
+                    if (table.id === tableId) {
+                      // Удаляем строку из таблицы
+                      const updatedRows = [...table.rows];
+                      if (rowIndex >= 0 && rowIndex < updatedRows.length) {
+                        updatedRows.splice(rowIndex, 1);
+                      }
+                      
+                      // Возвращаем обновленную таблицу
+                      return {
+                        ...table,
+                        rows: updatedRows
+                      };
+                    }
+                    return table;
+                  });
+                  
+                  // Возвращаем обновленную категорию
+                  return {
+                    ...category,
+                    tables: updatedTables
+                  };
+                }
+                return category;
+              });
+              
+              return {
+                ...subgroup,
+                categories: updatedCategories
+              };
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление столбца из таблицы внутри категории
+  const removeTableColumnInCategory = useCallback((groupId: number, categoryId: number, tableId: number, columnIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем категорию в подгруппах
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              const updatedCategories = subgroup.categories.map(category => {
+                if (category.id === categoryId && category.tables) {
+                  // Ищем таблицу по ID
+                  const updatedTables = category.tables.map(table => {
+                    if (table.id === tableId) {
+                      // Удаляем столбец из каждой строки
+                      const updatedRows = table.rows.map(row => {
+                        const updatedCells = [...row.cells];
+                        if (columnIndex >= 0 && columnIndex < updatedCells.length) {
+                          updatedCells.splice(columnIndex, 1);
+                        }
+                        
+                        return {
+                          ...row,
+                          cells: updatedCells
+                        };
+                      });
+                      
+                      // Возвращаем обновленную таблицу
+                      return {
+                        ...table,
+                        rows: updatedRows,
+                        columns: table.columns - 1
+                      };
+                    }
+                    return table;
+                  });
+                  
+                  // Возвращаем обновленную категорию
+                  return {
+                    ...category,
+                    tables: updatedTables
+                  };
+                }
+                return category;
+              });
+              
+              return {
+                ...subgroup,
+                categories: updatedCategories
+              };
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Функции для работы с таблицами внутри подгрупп
+  const updateSubgroupTableCell = useCallback((groupId: number, subgroupId: number, tableId: number, rowIndex: number, cellIndex: number, content: string) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        return {
+          ...cycle,
+          groups: cycle.groups.map(group => {
+            if (group.id === groupId) {
+              return {
+                ...group,
+                subgroups: group.subgroups.map(subgroup => {
+                  if (subgroup.id === subgroupId && subgroup.tables) {
+                    return {
+                      ...subgroup,
+                      tables: subgroup.tables.map(table => {
+                        if (table.id === tableId) {
+                          const updatedRows = [...table.rows];
+                          if (updatedRows[rowIndex] && updatedRows[rowIndex].cells[cellIndex]) {
+                            updatedRows[rowIndex] = {
+                              ...updatedRows[rowIndex],
+                              cells: updatedRows[rowIndex].cells.map((cell, idx) => {
+                                if (idx === cellIndex) {
+                                  return { ...cell, content };
+                                }
+                                return cell;
+                              })
+                            };
+                          }
+                          return { ...table, rows: updatedRows };
+                        }
+                        return table;
+                      })
+                    };
+                  }
+                  return subgroup;
+                })
+              };
+            }
+            return group;
+          })
+        };
+      });
+    });
+  }, []);
+
+  // Добавление строки в таблицу внутри подгруппы
+  const addTableRowInSubgroup = useCallback((groupId: number, subgroupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем подгруппу по ID
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                // Ищем таблицу по ID
+                const updatedTables = subgroup.tables.map(table => {
+                  if (table.id === tableId) {
+                    // Создаем новые ячейки для новой строки
+                    const newCells = [];
+                    for (let c = 0; c < table.columns; c++) {
+                      newCells.push({
+                        id: Date.now() + c,
+                        content: ''
+                      });
+                    }
+                    
+                    // Создаем новую строку
+                    const newRow = {
+                      id: Date.now(),
+                      cells: newCells
+                    };
+                    
+                    // Возвращаем обновленную таблицу с новой строкой
+                    return {
+                      ...table,
+                      rows: [...table.rows, newRow]
+                    };
+                  }
+                  return table;
+                });
+                
+                // Возвращаем обновленную подгруппу с обновленными таблицами
+                return {
+                  ...subgroup,
+                  tables: updatedTables
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Добавление столбца в таблицу внутри подгруппы
+  const addTableColumnInSubgroup = useCallback((groupId: number, subgroupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем подгруппу по ID
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                // Ищем таблицу по ID
+                const updatedTables = subgroup.tables.map(table => {
+                  if (table.id === tableId) {
+                    // Обновляем каждую строку, добавляя новую ячейку
+                    const updatedRows = table.rows.map(row => {
+                      return {
+                        ...row,
+                        cells: [
+                          ...row.cells,
+                          { id: Date.now() + row.id, content: '' }
+                        ]
+                      };
+                    });
+                    
+                    // Возвращаем обновленную таблицу
+                    return {
+                      ...table,
+                      rows: updatedRows,
+                      columns: table.columns + 1
+                    };
+                  }
+                  return table;
+                });
+                
+                // Возвращаем обновленную подгруппу
+                return {
+                  ...subgroup,
+                  tables: updatedTables
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление строки из таблицы внутри подгруппы
+  const removeTableRowInSubgroup = useCallback((groupId: number, subgroupId: number, tableId: number, rowIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем подгруппу по ID
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                // Ищем таблицу по ID
+                const updatedTables = subgroup.tables.map(table => {
+                  if (table.id === tableId) {
+                    // Удаляем строку из таблицы
+                    const updatedRows = [...table.rows];
+                    if (rowIndex >= 0 && rowIndex < updatedRows.length) {
+                      updatedRows.splice(rowIndex, 1);
+                    }
+                    
+                    // Возвращаем обновленную таблицу
+                    return {
+                      ...table,
+                      rows: updatedRows
+                    };
+                  }
+                  return table;
+                });
+                
+                // Возвращаем обновленную подгруппу
+                return {
+                  ...subgroup,
+                  tables: updatedTables
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление столбца из таблицы внутри подгруппы
+  const removeTableColumnInSubgroup = useCallback((groupId: number, subgroupId: number, tableId: number, columnIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        // Ищем группу по ID
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            // Ищем подгруппу по ID
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                // Ищем таблицу по ID
+                const updatedTables = subgroup.tables.map(table => {
+                  if (table.id === tableId) {
+                    // Удаляем столбец из каждой строки
+                    const updatedRows = table.rows.map(row => {
+                      const updatedCells = [...row.cells];
+                      if (columnIndex >= 0 && columnIndex < updatedCells.length) {
+                        updatedCells.splice(columnIndex, 1);
+                      }
+                      
+                      return {
+                        ...row,
+                        cells: updatedCells
+                      };
+                    });
+                    
+                    // Возвращаем обновленную таблицу
+                    return {
+                      ...table,
+                      rows: updatedRows,
+                      columns: table.columns - 1
+                    };
+                  }
+                  return table;
+                });
+                
+                // Возвращаем обновленную подгруппу
+                return {
+                  ...subgroup,
+                  tables: updatedTables
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Перемещение таблицы внутри подгруппы (drag and drop)
+  const moveTableInSubgroup = useCallback((groupId: number, subgroupId: number, sourceIndex: number, targetIndex: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                // Используем arrayMove для перемещения таблицы в массиве
+                const updatedTables = [...subgroup.tables];
+                const [removed] = updatedTables.splice(sourceIndex, 1);
+                updatedTables.splice(targetIndex, 0, removed);
+                
+                return {
+                  ...subgroup,
+                  tables: updatedTables
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
+            };
+          }
+          return group;
+        });
+        
+        return {
+          ...cycle,
+          groups: updatedGroups
+        };
+      });
+    });
+  }, []);
+
+  // Удаление таблицы из подгруппы
+  const removeSubgroupTable = useCallback((groupId: number, subgroupId: number, tableId: number) => {
+    setCycles(prevCycles => {
+      return prevCycles.map(cycle => {
+        const updatedGroups = cycle.groups.map(group => {
+          if (group.id === groupId) {
+            const updatedSubgroups = group.subgroups.map(subgroup => {
+              if (subgroup.id === subgroupId && subgroup.tables) {
+                return {
+                  ...subgroup,
+                  tables: subgroup.tables.filter(table => table.id !== tableId)
+                };
+              }
+              return subgroup;
+            });
+            
+            return {
+              ...group,
+              subgroups: updatedSubgroups
             };
           }
           return group;
@@ -1888,7 +2645,21 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     addTableRowInGroup,
     addTableColumnInGroup,
     removeTableRowInGroup,
-    removeTableColumnInGroup
+    removeTableColumnInGroup,
+    // Новые обработчики для работы с таблицами внутри категорий
+    updateCategoryTableCell,
+    addTableRowInCategory,
+    addTableColumnInCategory,
+    removeTableRowInCategory,
+    removeTableColumnInCategory,
+    // Новые обработчики для работы с таблицами внутри подгрупп
+    updateSubgroupTableCell,
+    addTableRowInSubgroup,
+    addTableColumnInSubgroup,
+    removeTableRowInSubgroup,
+    removeTableColumnInSubgroup,
+    moveTableInSubgroup,
+    removeSubgroupTable
   }
   
   return (

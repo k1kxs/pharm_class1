@@ -4,6 +4,7 @@ export interface Category {
   id: number;
   name: string;
   preparations: string;
+  tables?: Table[]; // Массив таблиц внутри категории
 }
 
 export interface Subgroup {
@@ -11,6 +12,7 @@ export interface Subgroup {
   name: string;
   categories: Category[];
   preparations?: string; // Опциональное поле для подгруппы с препаратами
+  tables?: Table[]; // Массив таблиц внутри подгруппы
 }
 
 export interface Group {

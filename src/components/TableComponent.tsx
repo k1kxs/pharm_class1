@@ -15,6 +15,7 @@ interface TableComponentProps {
   onColorChange?: () => void;
   hideHeader?: boolean;
   groupId?: number;
+  categoryId?: number; // ID категории для таблиц в категориях
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
   onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -30,6 +31,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
   onColorChange,
   hideHeader = false,
   groupId,
+  categoryId,
   draggable = false,
   onDragStart,
   onDragOver,
@@ -37,6 +39,7 @@ const TableComponent: React.FC<TableComponentProps> = ({
   onDragEnd
 }) => {
   const { 
+    cycles,
     updateTableCell,
     addTableRow,
     addTableColumn,
@@ -46,7 +49,17 @@ const TableComponent: React.FC<TableComponentProps> = ({
     addTableRowInGroup,
     addTableColumnInGroup,
     removeTableRowInGroup,
-    removeTableColumnInGroup
+    removeTableColumnInGroup,
+    updateCategoryTableCell,
+    addTableRowInCategory,
+    addTableColumnInCategory,
+    removeTableRowInCategory,
+    removeTableColumnInCategory,
+    updateSubgroupTableCell,
+    addTableRowInSubgroup,
+    addTableColumnInSubgroup,
+    removeTableRowInSubgroup,
+    removeTableColumnInSubgroup
   } = useDrugClassification();
 
   const [activeCell, setActiveCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
@@ -95,10 +108,25 @@ const TableComponent: React.FC<TableComponentProps> = ({
       
       setCellContent(finalContent);
       
+      // Определяем, находится ли ячейка в подгруппе
+      const isInSubgroup = groupId && categoryId && !!cycles?.find((c) => 
+        c.groups.find((g) => 
+          g.id === groupId && g.subgroups.find((s) => s.id === categoryId)
+        )
+      );
+      
       // Немедленно обновляем данные таблицы
-      if (groupId) {
+      if (isInSubgroup) {
+        // Если ячейка находится в таблице подгруппы
+        updateSubgroupTableCell(groupId, categoryId, table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
+      } else if (groupId && categoryId) {
+        // Если есть и groupId и categoryId, обновляем ячейку таблицы категории
+        updateCategoryTableCell(groupId, categoryId, table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
+      } else if (groupId) {
+        // Если есть только groupId, обновляем ячейку таблицы группы
         updateGroupTableCell(groupId, table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
       } else {
+        // Иначе обновляем ячейку обычной таблицы
         updateTableCell(table.id, activeCell.rowIndex, activeCell.cellIndex, finalContent);
       }
     }
@@ -141,17 +169,47 @@ const TableComponent: React.FC<TableComponentProps> = ({
 
   // Обработчик для изменения размеров таблицы
   const handleAddRow = () => {
-    if (groupId) {
+    // Определяем, находится ли ячейка в подгруппе
+    const isInSubgroup = groupId && categoryId && !!cycles?.find((c) => 
+      c.groups.find((g) => 
+        g.id === groupId && g.subgroups.find((s) => s.id === categoryId)
+      )
+    );
+    
+    if (isInSubgroup) {
+      // Добавляем строку в таблицу подгруппы
+      addTableRowInSubgroup(groupId, categoryId, table.id);
+    } else if (groupId && categoryId) {
+      // Добавляем строку в таблицу категории
+      addTableRowInCategory(groupId, categoryId, table.id);
+    } else if (groupId) {
+      // Добавляем строку в таблицу группы
       addTableRowInGroup(groupId, table.id);
     } else {
+      // Добавляем строку в обычную таблицу
       addTableRow(table.id);
     }
   };
 
   const handleAddColumn = () => {
-    if (groupId) {
+    // Определяем, находится ли ячейка в подгруппе
+    const isInSubgroup = groupId && categoryId && !!cycles?.find((c) => 
+      c.groups.find((g) => 
+        g.id === groupId && g.subgroups.find((s) => s.id === categoryId)
+      )
+    );
+    
+    if (isInSubgroup) {
+      // Добавляем столбец в таблицу подгруппы
+      addTableColumnInSubgroup(groupId, categoryId, table.id);
+    } else if (groupId && categoryId) {
+      // Добавляем столбец в таблицу категории
+      addTableColumnInCategory(groupId, categoryId, table.id);
+    } else if (groupId) {
+      // Добавляем столбец в таблицу группы
       addTableColumnInGroup(groupId, table.id);
     } else {
+      // Добавляем столбец в обычную таблицу
       addTableColumn(table.id);
     }
   };
@@ -160,9 +218,24 @@ const TableComponent: React.FC<TableComponentProps> = ({
   const handleRemoveRow = () => {
     if (table.rows.length <= 1) return; // Не удаляем последнюю строку
     
-    if (groupId) {
-      removeTableRowInGroup(groupId, table.id, table.rows.length - 1); // Удаляем последнюю строку
+    // Определяем, находится ли ячейка в подгруппе
+    const isInSubgroup = groupId && categoryId && !!cycles?.find((c) => 
+      c.groups.find((g) => 
+        g.id === groupId && g.subgroups.find((s) => s.id === categoryId)
+      )
+    );
+    
+    if (isInSubgroup) {
+      // Удаляем строку из таблицы подгруппы
+      removeTableRowInSubgroup(groupId, categoryId, table.id, table.rows.length - 1);
+    } else if (groupId && categoryId) {
+      // Удаляем строку из таблицы категории
+      removeTableRowInCategory(groupId, categoryId, table.id, table.rows.length - 1);
+    } else if (groupId) {
+      // Удаляем строку из таблицы группы
+      removeTableRowInGroup(groupId, table.id, table.rows.length - 1);
     } else {
+      // Удаляем строку из обычной таблицы
       removeTableRow(table.id, table.rows.length - 1);
     }
   };
@@ -170,9 +243,24 @@ const TableComponent: React.FC<TableComponentProps> = ({
   const handleRemoveColumn = () => {
     if (table.columns <= 1) return; // Не удаляем последний столбец
     
-    if (groupId) {
-      removeTableColumnInGroup(groupId, table.id, table.columns - 1); // Удаляем последний столбец
+    // Определяем, находится ли ячейка в подгруппе
+    const isInSubgroup = groupId && categoryId && !!cycles?.find((c) => 
+      c.groups.find((g) => 
+        g.id === groupId && g.subgroups.find((s) => s.id === categoryId)
+      )
+    );
+    
+    if (isInSubgroup) {
+      // Удаляем столбец из таблицы подгруппы
+      removeTableColumnInSubgroup(groupId, categoryId, table.id, table.columns - 1);
+    } else if (groupId && categoryId) {
+      // Удаляем столбец из таблицы категории
+      removeTableColumnInCategory(groupId, categoryId, table.id, table.columns - 1);
+    } else if (groupId) {
+      // Удаляем столбец из таблицы группы
+      removeTableColumnInGroup(groupId, table.id, table.columns - 1);
     } else {
+      // Удаляем столбец из обычной таблицы
       removeTableColumn(table.id, table.columns - 1);
     }
   };

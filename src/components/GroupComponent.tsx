@@ -29,7 +29,7 @@ interface GroupComponentProps {
   onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   onOpenColorPicker?: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   handleDeleteMedications?: (type: string, id: number) => void;
-  openTableModal?: (groupId?: number) => void;
+  openTableModal?: (groupId?: number, categoryId?: number) => void;
 }
 
 const GroupComponent: React.FC<GroupComponentProps> = ({
@@ -379,6 +379,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                     onDeleteItem={(type, id) => onDeleteItem ? onDeleteItem(type, id) : handleDelete(type, id)}
                     onOpenEditor={(type, parentId) => onOpenEditor ? onOpenEditor(type as 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId) : openEditModal(type, parentId)}
                     handleDeleteMedications={handleDeleteMedications}
+                    openTableModal={openTableModal}
                   />
                 ))}
               </div>
