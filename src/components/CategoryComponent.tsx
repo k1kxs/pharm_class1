@@ -87,14 +87,23 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                     className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                   >
                     <Edit size={12} className="mr-1" />
-                    Редактировать список
+                    Редактировать препараты
                   </button>
                 </div>
               )}
             </div>
           ) : isEditorMode ? (
-            <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
-              <p>Добавьте препараты</p>
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+              <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+              {onOpenEditor && (
+                <button
+                  onClick={() => onOpenEditor('category', category.id)}
+                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                >
+                  <Edit size={12} className="mr-1" />
+                  Добавить препараты
+                </button>
+              )}
             </div>
           ) : null}
         </div>

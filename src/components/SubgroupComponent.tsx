@@ -32,12 +32,12 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   onOpenEditor
 }) => {
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
+  const [isEditingMedications, setIsEditingMedications] = React.useState(false);
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow subgroup-component mb-4 last:mb-0">
-      <div className="p-3 flex justify-between items-center rounded-lg hover:bg-gray-50 transition-colors duration-200">
+      <div className="p-2 pl-0 flex justify-between items-center rounded-lg hover:bg-gray-50 transition-colors duration-200">
         <div className="flex-1 flex items-center min-w-0 overflow-hidden mr-2">
-          <CornerDownRight size={16} className="text-gray-400 mr-2 flex-shrink-0" />
           
           {isEditingTitle === subgroup.id ? (
             <div className="flex items-center w-full max-w-md">
@@ -57,13 +57,13 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
             </div>
           ) : (
             <div 
-              className="group flex items-center cursor-pointer flex-1 min-w-0 overflow-hidden"
+              className="group flex items-center cursor-pointer flex-1 min-w-0 overflow-hidden -ml-2"
               onClick={() => setIsSubgroupExpanded(!isSubgroupExpanded)}
             >
               <div className="flex items-center transition-transform duration-200 flex-shrink-0">
                 {isSubgroupExpanded ? 
-                  <ChevronDown size={18} className="mr-2 text-indigo-500" /> : 
-                  <ChevronRight size={18} className="mr-2 text-indigo-500 transition-transform duration-200 group-hover:translate-x-1" />
+                  <ChevronDown size={16} className="text-indigo-500 mr-3" /> : 
+                  <ChevronRight size={16} className="text-indigo-500 mr-3 transition-transform duration-200 group-hover:translate-x-1" />
                 }
               </div>
               
@@ -99,75 +99,121 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
       
       {isSubgroupExpanded && (
         <div className="p-3 bg-gray-50 rounded-b-lg border-t scale-in">
-          <div className="flex flex-row md:flex-row flex-col">
-            <div className="w-full md:w-11/12 mx-auto pr-0 md:pr-4">
-              {subgroup.preparations ? (
-                <div>
-                  <div 
-                    className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
-                    dangerouslySetInnerHTML={{ 
-                      __html: subgroup.preparations
-                    }}
-                  />
-                  {isEditorMode && (
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        onClick={() => onOpenEditor('subgroup', subgroup.id)}
-                        className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-                      >
-                        <Edit size={12} className="mr-1" />
-                        Редактировать список
-                      </button>
+          {isEditorMode && (
+            <div className="flex justify-start mb-4">
+              <button
+                onClick={() => onOpenEditor('category', subgroup.id)}
+                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
+              >
+                <Plus size={14} className="mr-1.5" />
+                <span className="font-medium">Добавить категорию</span>
+              </button>
+              <button
+                onClick={() => {
+                  onOpenEditor('subgroup', subgroup.id);
+                  setIsEditingMedications(true);
+                }}
+                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+              >
+                <Edit size={14} className="mr-1.5" />
+                <span className="font-medium">Редактировать список</span>
+              </button>
+            </div>
+          )}
+
+          {/* Препараты подгруппы, если есть */}
+          {isEditingMedications && (subgroup.preparations || isEditorMode) && (
+            <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component mb-4">
+              <div className="flex justify-between items-start">
+                <div className="w-1/3 pr-4 min-w-0 overflow-hidden">
+                  {/* Здесь может быть заголовок или описание, если нужно */}
+                </div>
+                
+                <div className="w-2-3">
+                  {subgroup.preparations ? (
+                    <div>
+                      <div 
+                        className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
+                        dangerouslySetInnerHTML={{ 
+                          __html: subgroup.preparations
+                        }}
+                      />
+                      {isEditorMode && (
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={() => onOpenEditor('subgroup', subgroup.id)}
+                            className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                          >
+                            <Edit size={12} className="mr-1" />
+                            Редактировать препараты
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : isEditorMode && (
+                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                      <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                      {isEditorMode && (
+                        <button
+                          onClick={() => onOpenEditor('subgroup', subgroup.id)}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                        >
+                          <Edit size={12} className="mr-1" />
+                          Добавить препараты
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
-              ) : isEditorMode ? (
-                <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
-                  <p>Добавьте препараты</p>
-                </div>
-              ) : null}
-              
-              {subgroup.categories && subgroup.categories.length > 0 ? (
-                subgroup.categories.map((category: Category) => (
-                  <CategoryComponent
-                    key={category.id}
-                    category={category}
-                    subgroupId={subgroup.id}
-                    groupId={groupId}
-                    cycleId={cycleId}
-                    isEditorMode={isEditorMode}
-                    isEditingTitle={isEditingTitle}
-                    editingTitleValue={editingTitleValue}
-                    onStartEditingTitle={onStartEditingTitle}
-                    onFinishEditingTitle={onFinishEditingTitle}
-                    onEditingTitleChange={onEditingTitleChange}
-                    onDeleteItem={onDeleteItem}
-                    onOpenEditor={onOpenEditor}
-                  />
-                ))
-              ) : (
-                <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
-                  {isEditorMode ? (
-                    <p>Добавьте категорию с помощью кнопки справа</p>
-                  ) : (
-                    <p>В данной подгруппе нет категорий</p>
-                  )}
-                </div>
-              )}
-              
+              </div>
+            </div>
+          )}
+
+          {!isEditingMedications && subgroup.preparations ? (
+            <div className="mb-4">
+              <div 
+                className="text-sm text-gray-700 formatted-preparations prep-container bg-white p-3 rounded-md shadow-sm border border-gray-200"
+                dangerouslySetInnerHTML={{ 
+                  __html: subgroup.preparations
+                }}
+              />
               {isEditorMode && (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-2 flex justify-end">
                   <button
-                    onClick={() => onOpenEditor('category', subgroup.id)}
-                    className="px-2.5 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                    onClick={() => onOpenEditor('subgroup', subgroup.id)}
+                    className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                   >
-                    <Plus size={12} className="mr-1.5" />
-                    <span className="font-medium">Добавить категорию</span>
+                    <Edit size={12} className="mr-1" />
+                    Редактировать препараты
                   </button>
                 </div>
               )}
             </div>
-          </div>
+          ) : null}
+          
+          {subgroup.categories && subgroup.categories.length > 0 ? (
+            subgroup.categories.map((category: Category) => (
+              <CategoryComponent
+                key={category.id}
+                category={category}
+                subgroupId={subgroup.id}
+                groupId={groupId}
+                cycleId={cycleId}
+                isEditorMode={isEditorMode}
+                isEditingTitle={isEditingTitle}
+                editingTitleValue={editingTitleValue}
+                onStartEditingTitle={onStartEditingTitle}
+                onFinishEditingTitle={onFinishEditingTitle}
+                onEditingTitleChange={onEditingTitleChange}
+                onDeleteItem={onDeleteItem}
+                onOpenEditor={onOpenEditor}
+              />
+            ))
+          ) : isEditorMode ? (
+            <div className="text-center text-gray-500 p-3 bg-white rounded-lg text-sm border border-gray-100">
+              <p>Добавьте категорию с помощью кнопки выше</p>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

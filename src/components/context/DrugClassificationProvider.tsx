@@ -333,7 +333,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                 const categoryToEdit = subgroup.categories.find(c => c.id === parentId);
                 if (categoryToEdit) {
                   itemData = categoryToEdit;
-                  setEditTitle('Редактировать категорию');
+                  setEditTitle('Редактировать препараты категории');
                 }
               });
             });
@@ -500,7 +500,7 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
                   ...group,
                   subgroups: group.subgroups.map(subgroup => 
                     subgroup.id === newItem.id 
-                      ? { ...subgroup, name: newItem.name } 
+                      ? { ...subgroup, name: newItem.name, preparations: newItem.preparations } 
                       : subgroup
                   )
                 };

@@ -50,6 +50,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
   onOpenColorPicker
 }) => {
   const [isGroupExpanded, setIsGroupExpanded] = React.useState(false);
+  const [isEditingMedications, setIsEditingMedications] = React.useState(false);
   
   // Используем хук useSortable из @dnd-kit/sortable для улучшенного drag-and-drop
   const {
@@ -172,16 +173,26 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
               <div className="flex justify-start px-4 pt-4 mb-4">
                 <button
                   onClick={() => openEditModal('subgroup', group.id)}
-                  className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+                  className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
                 >
                   <Plus size={14} className="mr-1.5" />
                   <span className="font-medium">Добавить подгруппу</span>
+                </button>
+                <button
+                  onClick={() => {
+                    openEditModal('group', group.id);
+                    setIsEditingMedications(true);
+                  }}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+                >
+                  <Edit size={14} className="mr-1.5" />
+                  <span className="font-medium">Редактировать список</span>
                 </button>
               </div>
             )}
 
             {/* Препараты группы, если есть */}
-            {(group.preparations || isEditorMode) && (
+            {isEditingMedications && (group.preparations || isEditorMode) && (
               <div className="px-4">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   {/* Блок для препаратов группы */}
@@ -204,11 +215,11 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                               {isEditorMode && (
                                 <div className="mt-2 flex justify-end">
                                   <button
-                                    onClick={() => openEditModal('group', group.id)}
+                                    onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
                                     className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
                                   >
                                     <Edit size={12} className="mr-1" />
-                                    Редактировать список
+                                    Редактировать препараты
                                   </button>
                                 </div>
                               )}
@@ -216,13 +227,15 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                           ) : isEditorMode && (
                             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
                               <div className="text-sm text-gray-500">Нет данных о препаратах</div>
-                              <button
-                                onClick={() => openEditModal('group', group.id)}
-                                className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-3"
-                              >
-                                <Edit size={12} className="mr-1" />
-                                <span className="font-medium">Редактировать список</span>
-                              </button>
+                              {isEditorMode && (
+                                <button
+                                  onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
+                                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                                >
+                                  <Edit size={12} className="mr-1" />
+                                  Добавить препараты
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

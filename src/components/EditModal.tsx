@@ -58,7 +58,7 @@ const EditModal: React.FC<EditModalProps> = ({
       setName(initialData.name || '');
       
       // Проверяем наличие препаратов для редактирования
-      if (type === 'category' || type === 'subgroup' || (type === 'group' && initialData.id)) {
+      if (type === 'category' || (type === 'subgroup' && initialData.id) || (type === 'group' && initialData.id)) {
         console.log('Загружаем препараты для редактирования:', initialData.preparations);
         // Убеждаемся, что данные препаратов существуют перед установкой
         setPreparations(initialData.preparations || '');
@@ -85,12 +85,12 @@ const EditModal: React.FC<EditModalProps> = ({
     console.log('Содержит ли numlist:', sanitizedPreparations.includes('<ol>'));
     
     const data: any = {
-      // Для редактирования препаратов группы сохраняем текущее название
-      name: (type === 'group' && initialData?.id) ? initialData.name : name
+      // Для редактирования препаратов категории, группы и подгруппы сохраняем текущее название
+      name: ((type === 'group' || type === 'subgroup' || (type === 'category' && initialData?.id)) && initialData?.id) ? initialData.name : name
     };
     
     // Добавляем препараты только для категорий, подгрупп и существующих групп
-    if (type === 'category' || type === 'subgroup' || (type === 'group' && initialData?.id)) {
+    if (type === 'category' || (type === 'subgroup' && initialData?.id) || (type === 'group' && initialData?.id)) {
       data.preparations = sanitizedPreparations;
     }
     
@@ -130,8 +130,8 @@ const EditModal: React.FC<EditModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Название показываем не для редактирования препаратов существующей группы */}
-        {!(type === 'group' && initialData?.id) && (
+        {/* Название показываем не для редактирования препаратов существующей группы, подгруппы или категории */}
+        {!((type === 'group' || type === 'subgroup' || (type === 'category' && initialData?.id)) && initialData?.id) && (
           <div className="space-y-2">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
               Название
@@ -143,7 +143,7 @@ const EditModal: React.FC<EditModalProps> = ({
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 shadow-sm"
               placeholder="Введите название..."
-              required={!(type === 'group' && initialData?.id)}
+              required={!((type === 'group' || type === 'subgroup' || (type === 'category' && initialData?.id)) && initialData?.id)}
             />
           </div>
         )}
@@ -151,7 +151,7 @@ const EditModal: React.FC<EditModalProps> = ({
         {/* Выбор цвета показываем не для редактирования препаратов существующей группы */}
         {(type === 'cycle' || (type === 'group' && !initialData?.id) || type === 'table') && (
           <div className="space-y-2">
-            <label htmlFor="gradient" className="block text-sm font-medium text-gray-700 flex items-center">
+            <label htmlFor="gradient" className="text-sm font-medium text-gray-700 flex items-center">
               <Palette size={16} className="mr-1" /> 
               Цвет {
                 type === 'cycle' ? 'цикла' : 
@@ -175,9 +175,9 @@ const EditModal: React.FC<EditModalProps> = ({
           </div>
         )}
         
-        {(type === 'category' || type === 'subgroup' || (type === 'group' && initialData?.id)) && (
+        {(type === 'category' || (type === 'subgroup' && initialData?.id) || (type === 'group' && initialData?.id)) && (
           <div className="space-y-2">
-            <label htmlFor="preparations" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="preparations" className="text-sm font-medium text-gray-700">
               Препараты
             </label>
             <div className="quill-container border rounded-md overflow-hidden shadow-sm">
