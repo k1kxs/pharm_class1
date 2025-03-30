@@ -16,6 +16,7 @@ interface SubgroupComponentProps {
   onDeleteItem: (type: string, id: number) => void;
   onOpenEditor: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
   searchQuery?: string;
+  handleDeleteMedications?: (type: string, id: number) => void;
 }
 
 const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
@@ -29,10 +30,11 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   onFinishEditingTitle,
   onEditingTitleChange,
   onDeleteItem,
-  onOpenEditor
+  onOpenEditor,
+  handleDeleteMedications
 }) => {
   const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
-  const [isEditingMedications, setIsEditingMedications] = React.useState(false);
+  const [isEditingMedications, setIsEditingMedications] = React.useState(true);
 
   return (
     <div className="border border-gray-200 rounded-lg bg-white shadow-sm transition-all duration-200 hover:shadow subgroup-component mb-4 last:mb-0">
@@ -122,7 +124,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
           )}
 
           {/* Препараты подгруппы, если есть */}
-          {isEditingMedications && (subgroup.preparations || isEditorMode) && (
+          {(subgroup.preparations || isEditorMode) && (
             <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component mb-4">
               <div className="flex justify-between items-start">
                 <div className="w-1/3 pr-4 min-w-0 overflow-hidden">
@@ -147,6 +149,13 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                             <Edit size={12} className="mr-1" />
                             Редактировать препараты
                           </button>
+                          <button
+                            onClick={() => handleDeleteMedications && handleDeleteMedications('subgroup', subgroup.id)}
+                            className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                          >
+                            <Trash size={12} className="mr-1" />
+                            Удалить препараты
+                          </button>
                         </div>
                       )}
                     </div>
@@ -168,28 +177,6 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
               </div>
             </div>
           )}
-
-          {!isEditingMedications && subgroup.preparations ? (
-            <div className="mb-4">
-              <div 
-                className="text-sm text-gray-700 formatted-preparations prep-container bg-white p-3 rounded-md shadow-sm border border-gray-200"
-                dangerouslySetInnerHTML={{ 
-                  __html: subgroup.preparations
-                }}
-              />
-              {isEditorMode && (
-                <div className="mt-2 flex justify-end">
-                  <button
-                    onClick={() => onOpenEditor('subgroup', subgroup.id)}
-                    className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-                  >
-                    <Edit size={12} className="mr-1" />
-                    Редактировать препараты
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
           
           {subgroup.categories && subgroup.categories.length > 0 ? (
             subgroup.categories.map((category: Category) => (
@@ -207,6 +194,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
                 onEditingTitleChange={onEditingTitleChange}
                 onDeleteItem={onDeleteItem}
                 onOpenEditor={onOpenEditor}
+                handleDeleteMedications={handleDeleteMedications}
               />
             ))
           ) : isEditorMode ? (

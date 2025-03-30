@@ -1361,6 +1361,92 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     setTables(prev => prev.filter(table => table.id !== tableId));
   }, []);
 
+  // Обработчик для удаления препаратов без открытия модального окна
+  const handleDeleteMedications = (type: string, id: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить препараты?')) {
+      return;
+    }
+    
+    let newCycles = [...cycles];
+    
+    switch (type) {
+      case 'group':
+        newCycles = newCycles.map(cycle => {
+          return {
+            ...cycle,
+            groups: cycle.groups.map(group => {
+              if (group.id === id) {
+                return {
+                  ...group,
+                  preparations: ''
+                };
+              }
+              return group;
+            })
+          };
+        });
+        break;
+        
+      case 'subgroup':
+        newCycles = newCycles.map(cycle => {
+          return {
+            ...cycle,
+            groups: cycle.groups.map(group => {
+              return {
+                ...group,
+                subgroups: group.subgroups.map(subgroup => {
+                  if (subgroup.id === id) {
+                    return {
+                      ...subgroup,
+                      preparations: ''
+                    };
+                  }
+                  return subgroup;
+                })
+              };
+            })
+          };
+        });
+        break;
+        
+      case 'category':
+        newCycles = newCycles.map(cycle => {
+          return {
+            ...cycle,
+            groups: cycle.groups.map(group => {
+              return {
+                ...group,
+                subgroups: group.subgroups.map(subgroup => {
+                  return {
+                    ...subgroup,
+                    categories: subgroup.categories.map(category => {
+                      if (category.id === id) {
+                        return {
+                          ...category,
+                          preparations: ''
+                        };
+                      }
+                      return category;
+                    })
+                  };
+                })
+              };
+            })
+          };
+        });
+        break;
+    }
+    
+    setCycles(newCycles);
+  };
+
+  // Обёртка для secure-вызова handleDeleteMedications
+  const secureHandleDeleteMedications = (type: string, id: number) => {
+    checkSessionBeforeAction(() => {
+      handleDeleteMedications(type, id);
+    });
+  };
+
   // Создаем значение контекста, объединяя состояние и действия
   const contextValue: DrugClassificationContextType = {
     // Состояние
@@ -1460,7 +1546,9 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     removeTableColumn,
     editTableName,
     editTableGradient,
-    deleteTable
+    deleteTable,
+    // Новые обработчики
+    handleDeleteMedications: secureHandleDeleteMedications
   }
   
   return (

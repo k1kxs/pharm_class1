@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Search, Download, Lock, Save, X, Plus, Clock, FileText, Table as TableIcon } from 'lucide-react';
+import { Search, Download, Lock, Save, X, Plus, FileText, Table as TableIcon } from 'lucide-react';
 
 // Импортируем хук для использования контекста
 import { useDrugClassification } from './context/DrugClassificationContext';
@@ -56,6 +56,7 @@ const ModernDrugClassification: React.FC = () => {
     openEditModal,
     closeEditModal,
     handleSaveEdit,
+    handleDeleteMedications,
     openExportModal,
     closeExportModal,
     handleExport,
@@ -96,32 +97,6 @@ const ModernDrugClassification: React.FC = () => {
   
   // Используем хук для отслеживания состояния сессии
   const { isSessionActive } = useAuthSession();
-  
-  // Состояние для отображения времени сессии
-  const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(24 * 60); // 24 часа в минутах
-  
-  // Обновление времени сессии каждую минуту
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
-    if (isEditorMode) {
-      // Устанавливаем интервал для обновления времени каждую минуту
-      timer = setInterval(() => {
-        setSessionTimeLeft(prev => Math.max(0, prev - 1));
-      }, 60000);
-    }
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isEditorMode]);
-  
-  // Форматирование времени сессии
-  const formatSessionTime = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}ч ${mins}м`;
-  };
   
   // Вычисляем, есть ли результаты для отображения
   const hasResults = cycles.length > 0;
@@ -199,12 +174,6 @@ const ModernDrugClassification: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {isEditorMode ? (
                 <>
-                  {/* Индикатор состояния сессии */}
-                  <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
-                    <Clock size={14} className="mr-1.5 text-gray-500" />
-                    <span>Сессия: {formatSessionTime(sessionTimeLeft)}</span>
-                  </div>
-                  
                   <button
                     onClick={exitEditorMode}
                     className="btn btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
@@ -214,20 +183,22 @@ const ModernDrugClassification: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={openPasswordModal}
-                  className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all duration-200 flex items-center shadow-sm"
-                  title="Войти в режим редактирования"
-                >
-                  <Lock size={16} />
-                </button>
+                <>
+                  <button
+                    onClick={openPasswordModal}
+                    className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all duration-200 flex items-center shadow-sm"
+                    title="Войти в режим редактирования"
+                  >
+                    <Lock size={16} />
+                  </button>
+                  
+                  <div className="export-button-wrapper" onClick={openExportModal}>
+                    <button className="export-button" title="Экспорт в PDF">
+                      <Download size={16} className="download-icon" />
+                    </button>
+                  </div>
+                </>
               )}
-              
-              <div className="export-button-wrapper" onClick={openExportModal}>
-                <button className="export-button" title="Экспорт в PDF">
-                  <Download size={16} className="download-icon" />
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -337,16 +308,7 @@ const ModernDrugClassification: React.FC = () => {
       {/* Основное содержимое */}
       <main className="container mx-auto px-4 py-8" ref={pdfRef}>
         {isEditorMode && (
-          <div className="mb-6 flex justify-between">
-            <button
-              onClick={reloadData}
-              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-200 flex items-center shadow-sm"
-              disabled={isLoading}
-            >
-              <Clock size={18} className="mr-2" />
-              <span className="font-medium">Обновить данные</span>
-            </button>
-            
+          <div className="mb-6 flex justify-start">
             <button
               onClick={() => openEditModal('cycle')}
               className="px-4 py-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-200 flex items-center shadow-sm"
@@ -425,6 +387,7 @@ const ModernDrugClassification: React.FC = () => {
                     searchQuery={searchQuery}
                     openEditModal={openEditModal}
                     handleDelete={handleDelete}
+                    handleDeleteMedications={handleDeleteMedications}
                     onColorPickerOpen={openColorPicker}
                     onTableAdd={() => openTableModal()}
                     onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleCycleDragStart(e, cycle)}

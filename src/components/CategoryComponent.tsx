@@ -16,6 +16,7 @@ interface CategoryComponentProps {
   onDeleteItem: (type: string, id: number) => void;
   onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category', parentId?: number) => void;
   searchQuery?: string;
+  handleDeleteMedications?: (type: string, id: number) => void;
 }
 
 const CategoryComponent: React.FC<CategoryComponentProps> = ({
@@ -30,7 +31,8 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   onFinishEditingTitle,
   onEditingTitleChange,
   onDeleteItem,
-  onOpenEditor
+  onOpenEditor,
+  handleDeleteMedications
 }) => {
   return (
     <div className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 category-component">
@@ -88,6 +90,13 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                   >
                     <Edit size={12} className="mr-1" />
                     Редактировать препараты
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMedications && handleDeleteMedications('category', category.id)}
+                    className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                  >
+                    <Trash size={12} className="mr-1" />
+                    Удалить препараты
                   </button>
                 </div>
               )}

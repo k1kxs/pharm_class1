@@ -114,6 +114,9 @@ export interface DrugClassificationActions {
   // Действия для удаления элементов
   handleDelete: (type: string, id: number) => void;
   
+  // Действие для удаления препаратов
+  handleDeleteMedications: (type: string, id: number) => void;
+  
   // Действия для drag and drop циклов
   handleCycleDragStart: (e: React.DragEvent, cycle: Cycle) => void;
   handleCycleDragOver: (e: React.DragEvent, cycle: Cycle) => void;

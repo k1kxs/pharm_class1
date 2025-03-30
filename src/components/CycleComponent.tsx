@@ -22,6 +22,7 @@ interface CycleComponentProps {
   onEditingTitleChange: (value: string) => void;
   openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   handleDelete: (type: string, id: number) => void;
+  handleDeleteMedications?: (type: string, id: number) => void;
   onColorPickerOpen: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   onTableAdd?: () => void;
   // Обработчики перетаскивания
@@ -51,6 +52,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
   onEditingTitleChange,
   openEditModal,
   handleDelete,
+  handleDeleteMedications,
   onColorPickerOpen,
   onTableAdd,
   onDragStart,
@@ -207,6 +209,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
                   onEditingTitleChange={() => {}}
                   openEditModal={openEditModal}
                   handleDelete={handleDelete}
+                  handleDeleteMedications={handleDeleteMedications}
                   onColorPickerOpen={onColorPickerOpen}
                   onDeleteItem={handleDelete}
                   onOpenEditor={openEditModal}

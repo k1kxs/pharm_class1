@@ -26,6 +26,7 @@ interface GroupComponentProps {
   onDeleteItem?: (type: string, id: number) => void;
   onOpenEditor?: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   onOpenColorPicker?: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
+  handleDeleteMedications?: (type: string, id: number) => void;
 }
 
 const GroupComponent: React.FC<GroupComponentProps> = ({
@@ -47,10 +48,11 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
   searchQuery,
   onDeleteItem,
   onOpenEditor,
-  onOpenColorPicker
+  onOpenColorPicker,
+  handleDeleteMedications
 }) => {
   const [isGroupExpanded, setIsGroupExpanded] = React.useState(false);
-  const [isEditingMedications, setIsEditingMedications] = React.useState(false);
+  const [isEditingMedications, setIsEditingMedications] = React.useState(true);
   
   // Используем хук useSortable из @dnd-kit/sortable для улучшенного drag-and-drop
   const {
@@ -192,7 +194,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
             )}
 
             {/* Препараты группы, если есть */}
-            {isEditingMedications && (group.preparations || isEditorMode) && (
+            {(group.preparations || isEditorMode) && (
               <div className="px-4">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   {/* Блок для препаратов группы */}
@@ -221,6 +223,13 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                                     <Edit size={12} className="mr-1" />
                                     Редактировать препараты
                                   </button>
+                                  <button
+                                    onClick={() => handleDeleteMedications && handleDeleteMedications('group', group.id)}
+                                    className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-all duration-200 flex items-center text-xs shadow-sm ml-2"
+                                  >
+                                    <Trash size={12} className="mr-1" />
+                                    Удалить препараты
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -248,7 +257,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
             
             {/* Подгруппы */}
             {group.subgroups && group.subgroups.length > 0 ? (
-              <div className="px-4 pb-4 subgroups-container">
+              <div className="px-4 pb-4 mt-5 subgroups-container">
                 {group.subgroups.map((subgroup) => (
                   <SubgroupComponent
                     key={subgroup.id}
@@ -263,6 +272,7 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                     onEditingTitleChange={onEditingTitleChange}
                     onDeleteItem={(type, id) => onDeleteItem ? onDeleteItem(type, id) : handleDelete(type, id)}
                     onOpenEditor={(type, parentId) => onOpenEditor ? onOpenEditor(type as 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId) : openEditModal(type, parentId)}
+                    handleDeleteMedications={handleDeleteMedications}
                   />
                 ))}
               </div>
