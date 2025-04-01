@@ -1141,3 +1141,16 @@ div[dangerouslySetInnerHTML] {
   left: 0;
   font-weight: 500;
 }
+
+/* Отступы для таблиц от названий подгрупп и категорий */
+.subgroup-component .space-y-4,
+.category-component .space-y-4,
+.subgroup-component .table-container,
+.category-component .table-container {
+  margin-top: 16px;
+}
+
+/* Отступ для первой таблицы в категории */
+.category-component .w-2-3 .mb-4:first-child {
+  margin-top: 16px;
+}

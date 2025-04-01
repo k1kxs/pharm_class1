@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Info } from 'lucide-react';
+import { X, Info, Grid, Table as TableIcon, Check, MousePointer } from 'lucide-react';
 import { useDrugClassification } from './context/DrugClassificationContext';
 
 interface TableModalProps {
@@ -21,6 +21,7 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
 
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
   const [selectedSize, setSelectedSize] = useState<{ rows: number; cols: number }>({ rows: 0, cols: 0 });
+  const [isSizeFixed, setIsSizeFixed] = useState<boolean>(false);
   const maxSize = 10; // Максимальный размер сетки конструктора
 
   // Сброс состояния при открытии/закрытии модального окна
@@ -28,20 +29,32 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       setHoveredCell(null);
       setSelectedSize({ rows: 0, cols: 0 });
+      setIsSizeFixed(false);
       // Устанавливаем дефолтное название таблицы
       setNewTableName(`Таблица ${new Date().toLocaleString('ru')}`);
+      // Устанавливаем градиент по умолчанию
+      setNewTableGradient('from-blue-500 via-indigo-500 to-violet-600');
     }
-  }, [isOpen, setNewTableName]);
+  }, [isOpen, setNewTableName, setNewTableGradient]);
 
   // Обработчик наведения на ячейку
   const handleCellHover = (row: number, col: number) => {
-    setHoveredCell({ row, col });
+    if (!isSizeFixed) {
+      setHoveredCell({ row, col });
+    }
   };
 
   // Обработчик клика по ячейке
   const handleCellClick = (row: number, col: number) => {
     setSelectedSize({ rows: row + 1, cols: col + 1 });
     setNewTableSize(row + 1, col + 1);
+    setIsSizeFixed(true);
+  };
+
+  // Обработчик для сброса фиксации размера
+  const handleResetSize = () => {
+    setIsSizeFixed(false);
+    setHoveredCell(null);
   };
 
   // Обработчик создания таблицы
@@ -58,16 +71,17 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
     for (let row = 0; row < maxSize; row++) {
       for (let col = 0; col < maxSize; col++) {
         // Определяем, подсвечена ли ячейка
-        const isHighlighted = 
-          (hoveredCell && row <= hoveredCell.row && col <= hoveredCell.col) || 
-          (row < selectedSize.rows && col < selectedSize.cols);
+        const isSelected = row < selectedSize.rows && col < selectedSize.cols;
+        const isHighlighted = isSelected || 
+          (!isSizeFixed && hoveredCell && row <= hoveredCell.row && col <= hoveredCell.col);
         
         cells.push(
           <div 
             key={`${row}-${col}`}
-            className={`w-6 h-6 border border-gray-300 m-0.5 cursor-pointer transition-colors ${
-              isHighlighted ? 'bg-blue-500' : 'bg-white'
-            }`}
+            className={`w-6 h-6 m-0.5 rounded-sm cursor-pointer transition-all duration-200 shadow-sm 
+              ${isHighlighted 
+                ? 'bg-gradient-to-br from-blue-500 to-indigo-700 border border-blue-300 transform scale-105' 
+                : 'bg-white border border-gray-200 hover:border-blue-300 hover:shadow'}`}
             onMouseEnter={() => handleCellHover(row, col)}
             onClick={() => handleCellClick(row, col)}
           />
@@ -77,77 +91,77 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
     return cells;
   };
 
-  // Список предустановленных градиентов
-  const gradients = [
-    'from-blue-500 via-indigo-500 to-violet-600',
-    'from-emerald-500 via-teal-500 to-cyan-600',
-    'from-amber-500 via-orange-500 to-yellow-500',
-    'from-red-500 via-rose-500 to-pink-500',
-    'from-purple-600 via-violet-600 to-indigo-600',
-    'from-sky-500 via-blue-500 to-indigo-500',
-    'from-green-500 via-emerald-500 to-teal-500',
-    'from-yellow-500 via-amber-500 to-orange-500',
-    'from-pink-500 via-rose-500 to-red-500'
-  ];
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+    <div className="fixed inset-0 bg-gray-700 bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all duration-300 scale-100">
         {/* Заголовок */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Конструктор таблицы</h2>
+        <div className="flex justify-between items-center p-4 border-b border-gray-100">
+          <div className="flex items-center space-x-2">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+              <TableIcon size={20} />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800">Конструктор таблицы</h2>
+          </div>
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-200"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Содержимое */}
-        <div className="p-5">
-          {/* Выбор цвета шапки */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Цвет шапки таблицы
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {gradients.map((gradient, index) => (
-                <div
-                  key={index}
-                  className={`h-10 rounded cursor-pointer border-2 bg-gradient-to-r ${gradient} ${
-                    newTableGradient === gradient ? 'border-blue-500' : 'border-transparent'
-                  }`}
-                  onClick={() => setNewTableGradient(gradient)}
-                />
-              ))}
-            </div>
-          </div>
-
+        <div className="p-6">
           {/* Конструктор таблицы */}
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Размер таблицы
-            </label>
-            <div className="flex items-start gap-8">
-              <div>
-                <div className="grid grid-cols-10 mb-3">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center">
+                <Grid size={18} className="text-blue-600 mr-2" />
+                <h3 className="text-md font-semibold text-gray-800">Размер таблицы</h3>
+              </div>
+              
+              {isSizeFixed && (
+                <button 
+                  className="flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-full transition-colors"
+                  onClick={handleResetSize}
+                >
+                  <MousePointer size={12} className="mr-1" />
+                  Изменить выбор
+                </button>
+              )}
+            </div>
+            
+            <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+              <div className="flex-1">
+                <div className="grid grid-cols-10 mb-4 bg-gray-50 p-3 rounded-lg">
                   {renderGridConstructor()}
                 </div>
-                <div className="text-sm text-gray-600 flex items-center">
-                  <Info size={14} className="mr-1" />
-                  Кликните на ячейку, чтобы выбрать размер таблицы
+                <div className="text-sm text-gray-600 flex items-center bg-blue-50 p-2 px-3 rounded-md">
+                  <Info size={14} className="text-blue-600 mr-2 flex-shrink-0" />
+                  <span>{isSizeFixed ? 'Размер выбран. Нажмите "Изменить выбор" для изменения' : 'Кликните на ячейку, чтобы выбрать размер таблицы'}</span>
                 </div>
               </div>
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <div className="text-sm font-medium text-gray-700 mb-1">Текущий размер:</div>
-                <div className="text-lg font-semibold">
-                  {selectedSize.rows} x {selectedSize.cols}
+              
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100 shadow-sm min-w-[180px]">
+                <div className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  Текущий размер:
+                  {isSizeFixed && <Check size={14} className="ml-2 text-green-500" />}
                 </div>
-                <div className="mt-2 text-sm text-gray-500">
-                  {selectedSize.rows} строк, {selectedSize.cols} столбцов
+                <div className="text-2xl font-bold text-blue-800 mb-1">
+                  {selectedSize.rows} <span className="text-lg text-blue-400">×</span> {selectedSize.cols}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {selectedSize.rows > 0 ? (
+                    <>
+                      {selectedSize.rows} {selectedSize.rows === 1 ? 'строка' : selectedSize.rows < 5 ? 'строки' : 'строк'},
+                      <br />
+                      {selectedSize.cols} {selectedSize.cols === 1 ? 'столбец' : selectedSize.cols < 5 ? 'столбца' : 'столбцов'}
+                    </>
+                  ) : (
+                    <span className="text-orange-500">Выберите размер</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -155,19 +169,19 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Кнопки */}
-        <div className="p-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
           >
             Отмена
           </button>
           <button
             onClick={handleCreateTable}
-            className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+            className={`px-5 py-2 rounded-lg text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${
               selectedSize.rows > 0 && selectedSize.cols > 0
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-blue-400 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:shadow-lg hover:from-blue-700 hover:to-indigo-800'
+                : 'bg-blue-300 cursor-not-allowed'
             }`}
             disabled={selectedSize.rows === 0 || selectedSize.cols === 0}
           >
