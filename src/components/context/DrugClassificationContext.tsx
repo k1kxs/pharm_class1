@@ -20,7 +20,6 @@ export interface DrugClassificationState {
   editTitle: string;
   editData: any | null;
   parentForEdit: number | null;
-  exportModalOpen: boolean;
   colorPickerOpen: boolean;
   selectedCycleId: number | null;
   itemType: 'cycle' | 'group' | 'table';
@@ -94,10 +93,6 @@ export interface DrugClassificationActions {
   openEditModal: (type: 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId?: number) => void;
   closeEditModal: () => void;
   handleSaveEdit: (data: any) => void;
-  
-  openExportModal: () => void;
-  closeExportModal: () => void;
-  handleExport: (cycleIds: number[]) => void;
   
   openColorPicker: (itemId: number, itemType?: 'cycle' | 'group' | 'table') => void;
   closeColorPicker: () => void;

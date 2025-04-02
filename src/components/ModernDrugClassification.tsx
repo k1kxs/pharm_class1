@@ -9,10 +9,10 @@ import useAuthSession from './hooks/useAuthSession';
 import CycleComponent from './CycleComponent';
 import PasswordModal from './PasswordModal';
 import EditModal from './EditModal';
-import ExportModal from './ExportModal';
 import ColorPickerModal from './ColorPickerModal';
 import TableModal from './TableModal';
 import TableComponent from './TableComponent';
+import PDFExportButton from './utils/PDFExportButton';
 
 // Импортируем компоненты для drag-and-drop
 import { DndContext, closestCenter } from '@dnd-kit/core';
@@ -32,7 +32,6 @@ const ModernDrugClassification: React.FC = () => {
     editTitle,
     editData,
     parentForEdit,
-    exportModalOpen,
     colorPickerOpen,
     tableModalOpen,
     selectedCycleId,
@@ -57,9 +56,6 @@ const ModernDrugClassification: React.FC = () => {
     closeEditModal,
     handleSaveEdit,
     handleDeleteMedications,
-    openExportModal,
-    closeExportModal,
-    handleExport,
     openColorPicker,
     closeColorPicker,
     handleColorSelect,
@@ -108,183 +104,208 @@ const ModernDrugClassification: React.FC = () => {
     handlePasswordSubmitOriginal(password);
   };
   
+  // Добавляем состояние для режима печати
+  const [isPrintMode, setIsPrintMode] = useState(false);
+  
+  // Эффект для определения режима печати (используется для PDF и печати)
+  useEffect(() => {
+    // Проверяем URL на наличие параметра print=true
+    const urlParams = new URLSearchParams(window.location.search);
+    const printMode = urlParams.get('print') === 'true';
+    setIsPrintMode(printMode);
+    
+    // Если режим печати, раскрываем все циклы
+    if (printMode) {
+      cycles.forEach(cycle => {
+        if (!selectedCycles.includes(cycle.id)) {
+          toggleCycle(cycle.id);
+        }
+      });
+    }
+  }, [window.location.search, cycles.length]);
+  
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Модальные окна */}
-      <PasswordModal
-        isOpen={passwordModalOpen}
-        onClose={closePasswordModal}
-        onPasswordSubmit={handlePasswordSubmit}
-        error={passwordError}
-      />
+      {/* Модальные окна - скрываем в режиме печати */}
+      {!isPrintMode && (
+        <>
+          <PasswordModal
+            isOpen={passwordModalOpen}
+            onClose={closePasswordModal}
+            onPasswordSubmit={handlePasswordSubmit}
+            error={passwordError}
+          />
+          
+          <EditModal
+            isOpen={editModalOpen}
+            onClose={closeEditModal}
+            onSave={handleSaveEdit}
+            type={editType}
+            title={editTitle}
+            initialData={editData}
+            parentId={parentForEdit}
+          />
+          
+          <ColorPickerModal
+            isOpen={colorPickerOpen}
+            onClose={closeColorPicker}
+            onColorSelect={handleColorSelect}
+            currentGradient={
+              itemType === 'table' 
+                ? tables.find(t => t.id === selectedTableId)?.gradient 
+                : cycles.find(c => c.id === selectedCycleId)?.gradient || 
+                  cycles.flatMap(c => c.groups).find(g => g.id === selectedCycleId)?.gradient
+            }
+            title={
+              itemType === 'table' 
+                ? 'Выбор цвета шапки таблицы' 
+                : itemType === 'cycle' 
+                  ? 'Выбор цвета цикла' 
+                  : 'Выбор цвета группы'
+            }
+          />
+          
+          <TableModal
+            isOpen={tableModalOpen}
+            onClose={closeTableModal}
+          />
+        </>
+      )}
       
-      <EditModal
-        isOpen={editModalOpen}
-        onClose={closeEditModal}
-        onSave={handleSaveEdit}
-        type={editType}
-        title={editTitle}
-        initialData={editData}
-        parentId={parentForEdit}
-      />
-      
-      <ExportModal
-        isOpen={exportModalOpen}
-        onClose={closeExportModal}
-        cycles={cycles}
-        onExport={handleExport}
-      />
-      
-      <ColorPickerModal
-        isOpen={colorPickerOpen}
-        onClose={closeColorPicker}
-        onColorSelect={handleColorSelect}
-        currentGradient={
-          itemType === 'table' 
-            ? tables.find(t => t.id === selectedTableId)?.gradient 
-            : cycles.find(c => c.id === selectedCycleId)?.gradient || 
-              cycles.flatMap(c => c.groups).find(g => g.id === selectedCycleId)?.gradient
-        }
-        title={
-          itemType === 'table' 
-            ? 'Выбор цвета шапки таблицы' 
-            : itemType === 'cycle' 
-              ? 'Выбор цвета цикла' 
-              : 'Выбор цвета группы'
-        }
-      />
-      
-      <TableModal
-        isOpen={tableModalOpen}
-        onClose={closeTableModal}
-      />
-      
-      {/* Заголовок с режимом редактирования */}
-      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-wrap justify-between items-center">
-            <div className="flex-1 mb-2 sm:mb-0 flex items-center">
-              <img src="/logo.png" alt="ОрГМУ" className="h-12 w-auto mr-4" />
-              <div>
-                <div className="text-sm text-gray-500 font-medium">ФГБОУ ВО ОрГМУ Минздрава России</div>
-                <div className="text-xs text-gray-400">Кафедра фармакологии</div>
+      {/* Заголовок с режимом редактирования - скрываем в режиме печати */}
+      {!isPrintMode && (
+        <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex flex-wrap justify-between items-center">
+              <div className="flex-1 mb-2 sm:mb-0 flex items-center">
+                <img src="/logo.png" alt="ОрГМУ" className="h-12 w-auto mr-4" />
+                <div>
+                  <div className="text-sm text-gray-500 font-medium">ФГБОУ ВО ОрГМУ Минздрава России</div>
+                  <div className="text-xs text-gray-400">Кафедра фармакологии</div>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <PDFExportButton className="btn-sm" />
+                {isEditorMode ? (
+                  <>
+                    <button
+                      onClick={exitEditorMode}
+                      className="btn btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
+                    >
+                      <X size={14} className="mr-1.5" />
+                      Выход
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={openPasswordModal}
+                      className="btn btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
+                    >
+                      <Lock size={14} className="mr-1.5" />
+                      Редактировать
+                    </button>
+                  </>
+                )}
               </div>
             </div>
+          </div>
+        </header>
+      )}
+      
+      {/* Заголовок и поиск - изменяем в режиме печати */}
+      {!isPrintMode ? (
+        <div className="bg-header-wave relative overflow-hidden text-white py-12" style={{
+          position: 'relative',
+          boxShadow: '0px 8px 28px -9px rgba(0,0,0,0.45)',
+          overflow: 'hidden'
+        }}>
+          {/* Анимированные волны */}
+          <div className="wave" style={{
+            position: 'absolute',
+            width: '1000px',
+            height: '1000px',
+            opacity: 0.8,
+            left: '-20%',
+            top: '-50%',
+            background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+            borderRadius: '43%',
+            animation: 'wave 55s infinite linear',
+            zIndex: 0
+          }}></div>
+          <div className="wave" style={{
+            position: 'absolute',
+            width: '1200px',
+            height: '1200px',
+            opacity: 0.7,
+            right: '-20%',
+            top: '-70%',
+            background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+            borderRadius: '47%',
+            animation: 'wave 50s infinite linear',
+            zIndex: 0
+          }}></div>
+          <div className="wave" style={{
+            position: 'absolute',
+            width: '1100px',
+            height: '1100px',
+            opacity: 0.6,
+            left: '10%',
+            top: '-60%',
+            background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
+            borderRadius: '45%',
+            animation: 'wave 45s infinite linear',
+            zIndex: 0
+          }}></div>
+          
+          <div className="container mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
+            <h1 className="text-3xl md:text-4xl font-bold mb-8 tracking-tight text-center">
+              Классификация лекарственных средств
+            </h1>
             
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {isEditorMode ? (
-                <>
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={20} className="text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Поиск по препаратам, группам и категориям..."
+                  className="block w-full pl-12 pr-12 py-3.5 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-shadow duration-200 font-medium shadow-lg"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={isLoading}
+                />
+                {searchQuery && (
                   <button
-                    onClick={exitEditorMode}
-                    className="btn btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    disabled={isLoading}
                   >
-                    <X size={14} className="mr-1.5" />
-                    Выход
+                    <X size={18} className="text-gray-500 hover:text-gray-700" />
                   </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={openPasswordModal}
-                    className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all duration-200 flex items-center shadow-sm"
-                    title="Войти в режим редактирования"
-                  >
-                    <Lock size={16} />
-                  </button>
-                  
-                  <div className="export-button-wrapper" onClick={openExportModal}>
-                    <button className="export-button" title="Экспорт в PDF">
-                      <Download size={16} className="download-icon" />
-                    </button>
-                  </div>
-                </>
+                )}
+              </div>
+              
+              {isSaving && (
+                <div className="mt-2 text-center text-white text-sm bg-blue-500 bg-opacity-50 py-1 px-3 rounded-full inline-block mx-auto">
+                  Сохранение изменений...
+                </div>
               )}
             </div>
           </div>
         </div>
-      </header>
-      
-      {/* Заголовок и поиск */}
-      <div className="bg-header-wave relative overflow-hidden text-white py-12" style={{
-        position: 'relative',
-        boxShadow: '0px 8px 28px -9px rgba(0,0,0,0.45)',
-        overflow: 'hidden'
-      }}>
-        {/* Анимированные волны */}
-        <div className="wave" style={{
-          position: 'absolute',
-          width: '1000px',
-          height: '1000px',
-          opacity: 0.8,
-          left: '-20%',
-          top: '-50%',
-          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
-          borderRadius: '43%',
-          animation: 'wave 55s infinite linear',
-          zIndex: 0
-        }}></div>
-        <div className="wave" style={{
-          position: 'absolute',
-          width: '1200px',
-          height: '1200px',
-          opacity: 0.7,
-          right: '-20%',
-          top: '-70%',
-          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
-          borderRadius: '47%',
-          animation: 'wave 50s infinite linear',
-          zIndex: 0
-        }}></div>
-        <div className="wave" style={{
-          position: 'absolute',
-          width: '1100px',
-          height: '1100px',
-          opacity: 0.6,
-          left: '10%',
-          top: '-60%',
-          background: 'linear-gradient(744deg, #af40ff, #5b42f3 60%, #00ddeb)',
-          borderRadius: '45%',
-          animation: 'wave 45s infinite linear',
-          zIndex: 0
-        }}></div>
-        
-        <div className="container mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 tracking-tight text-center">
+      ) : (
+        <div className="text-center py-8">
+          <h1 className="text-3xl font-bold">
             Классификация лекарственных средств
           </h1>
-          
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search size={20} className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Поиск по препаратам, группам и категориям..."
-                className="block w-full pl-12 pr-12 py-3.5 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-shadow duration-200 font-medium shadow-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={isLoading}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                  disabled={isLoading}
-                >
-                  <X size={18} className="text-gray-500 hover:text-gray-700" />
-                </button>
-              )}
-            </div>
-            
-            {isSaving && (
-              <div className="mt-2 text-center text-white text-sm bg-blue-500 bg-opacity-50 py-1 px-3 rounded-full inline-block mx-auto">
-                Сохранение изменений...
-              </div>
-            )}
+          <div className="text-gray-500 mt-2">
+            ФГБОУ ВО ОрГМУ Минздрава России, Кафедра фармакологии
           </div>
         </div>
-      </div>
+      )}
       
       {/* Определяем анимацию в глобальных стилях */}
       <style>
@@ -306,7 +327,7 @@ const ModernDrugClassification: React.FC = () => {
       </style>
       
       {/* Основное содержимое */}
-      <main className="container mx-auto px-4 py-8" ref={pdfRef}>
+      <main className="container mx-auto px-4 py-8" ref={pdfRef} data-pdf-content="true">
         {isEditorMode && (
           <div className="mb-6 flex justify-start">
             <button
@@ -407,14 +428,43 @@ const ModernDrugClassification: React.FC = () => {
         )}
       </main>
       
-      {/* Подвал */}
-      <footer className="bg-white border-t py-8 mt-auto">
-        <div className="container mx-auto px-4">
-          <div className="text-center text-gray-500 text-sm">
-            © 2023 Кафедра фармакологии ОрГМУ. Все права защищены.
+      {/* Подвал - адаптируем для режима печати */}
+      {!isPrintMode ? (
+        <footer className="bg-white border-t py-8 mt-auto">
+          <div className="container mx-auto px-4">
+            <div className="text-center text-gray-500 text-sm">
+              © 2023 Кафедра фармакологии ОрГМУ. Все права защищены.
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      ) : (
+        <footer className="py-8 mt-auto">
+          <div className="container mx-auto px-4">
+            <div className="text-center text-gray-500 text-sm">
+              © 2023 Кафедра фармакологии ОрГМУ. Все права защищены.
+            </div>
+          </div>
+        </footer>
+      )}
+      
+      {/* В режиме печати добавляем стили для страницы */}
+      {isPrintMode && (
+        <style>{`
+          @page {
+            size: A4;
+            margin: 2cm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          /* Скрываем все ненужные элементы */
+          button, .search-container {
+            display: none !important;
+          }
+        `}</style>
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Базовый URL API (из переменных окружения или по умолчанию)
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({

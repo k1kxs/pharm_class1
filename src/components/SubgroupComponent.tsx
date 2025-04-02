@@ -37,7 +37,7 @@ const SubgroupComponent: React.FC<SubgroupComponentProps> = ({
   handleDeleteMedications,
   openTableModal
 }) => {
-  const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(false);
+  const [isSubgroupExpanded, setIsSubgroupExpanded] = React.useState(true);
   const [isEditingMedications, setIsEditingMedications] = React.useState(true);
   const [showEmptyMedicationsPlaceholder, setShowEmptyMedicationsPlaceholder] = React.useState(false);
   

@@ -1,0 +1,30 @@
+@media print {
+  /* Скрыть элементы, которые не нужны при печати */
+  header, footer, button, .search-container {
+    display: none !important;
+  }
+  
+  /* Обеспечить правильные разрывы страниц */
+  .cycle-component {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Обеспечить печать фоновых цветов и изображений */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Установить поля для страницы */
+  @page {
+    margin: 2cm;
+  }
+  
+  /* Убрать все анимации */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+} 

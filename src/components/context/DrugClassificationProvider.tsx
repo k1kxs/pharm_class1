@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, createContext, useCon
 import DrugClassificationContext, { DrugClassificationContextType } from './DrugClassificationContext';
 import { Cycle, Group, Subgroup, Category, DraggedGroup, DraggedSubgroup, DraggedCategory, Table, TableRow, TableCell } from '../types';
 import { textContainsQuery } from '../utils/textUtils';
-import { PDFGenerator } from '../PDFGenerator';
 import { useAuth } from './AuthProvider';
 import { dataAPI } from '../../services/api';
 // Импорт компонентов из @dnd-kit
@@ -10,8 +9,6 @@ import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, MouseSensor, T
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { debounce } from 'lodash';
 import ConfirmDialog from '../ui/ConfirmDialog';
-// Исправляем импорт: используем именованный экспорт
-import { PDFExporter } from '../../utils/PDFExporter';
 import { toast } from 'react-toastify';
 
 interface DrugClassificationProviderProps {
@@ -41,7 +38,6 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
   const [editTitle, setEditTitle] = useState('');
   const [editData, setEditData] = useState<any>(null);
   const [parentForEdit, setParentForEdit] = useState<number | null>(null);
-  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [selectedCycleId, setSelectedCycleId] = useState<number | null>(null);
   
@@ -626,53 +622,6 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     }
     
     setCycles(newCycles);
-  }
-  
-  // Открытие модального окна экспорта
-  const openExportModal = () => {
-    setExportModalOpen(true);
-  }
-  
-  // Закрытие модального окна экспорта
-  const closeExportModal = () => {
-    setExportModalOpen(false);
-  }
-  
-  // Обработчик экспорта в PDF
-  const handleExport = async (cycleIds: number[]) => {
-    try {
-      // Закрываем модальное окно после начала экспорта
-      closeExportModal();
-      
-      // Показываем уведомление о начале экспорта
-      /*
-      toast.info('Начинаем создание PDF...', {
-        position: 'top-right',
-        autoClose: 3000
-      });
-      */
-      
-      // Используем обновленный PDFExporter
-      await PDFExporter.exportToPDF(cycles, cycleIds);
-      
-      // Показываем уведомление об успешном экспорте
-      /*
-      toast.success('PDF успешно создан!', {
-        position: 'top-right',
-        autoClose: 5000
-      });
-      */
-    } catch (error) {
-      console.error('Ошибка при экспорте в PDF:', error);
-      
-      // Показываем уведомление об ошибке
-      /*
-      toast.error('Произошла ошибка при создании PDF', {
-        position: 'top-right',
-        autoClose: 5000
-      });
-      */
-    }
   }
   
   // Открытие палитры цветов
@@ -2604,10 +2553,6 @@ export const DrugClassificationProvider: React.FC<DrugClassificationProviderProp
     handleSaveEdit: secureHandleSaveEdit,
     editData,
     parentForEdit,
-    exportModalOpen,
-    openExportModal,
-    closeExportModal,
-    handleExport,
     toggleCycle,
     searchQuery,
     setSearchQuery,

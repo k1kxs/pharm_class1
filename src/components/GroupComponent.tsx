@@ -221,102 +221,83 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
         )}
       </div>
       
-      {isGroupExpanded && (
-        <div className="bg-white rounded-b-lg scale-in">
-          {/* Горизонтальное расположение содержимого, с названиями слева и препаратами справа */}
-          <div className="flex flex-col">
-            {isEditorMode && (
-              <div className="flex justify-start px-4 pt-4 mb-4">
+      <div className={`${isGroupExpanded ? 'block' : 'hidden'} bg-white rounded-b-lg scale-in print:block print:!visible`}>
+        {/* Горизонтальное расположение содержимого, с названиями слева и препаратами справа */}
+        <div className="flex flex-col">
+          {isEditorMode && (
+            <div className="flex justify-start px-4 pt-4 mb-4">
+              <button
+                onClick={() => openEditModal('subgroup', group.id)}
+                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
+              >
+                <Plus size={14} className="mr-1.5" />
+                <span className="font-medium">Добавить подгруппу</span>
+              </button>
+              <button
+                onClick={() => openTableModal ? openTableModal(group.id) : openEditModal('table', group.id)}
+                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
+              >
+                <Plus size={14} className="mr-1.5" />
+                <span className="font-medium">Добавить таблицу</span>
+              </button>
+              {!group.preparations && (
                 <button
-                  onClick={() => openEditModal('subgroup', group.id)}
-                  className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
+                  onClick={() => setShowEmptyMedicationsPlaceholder(true)}
+                  className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-sm shadow-sm"
                 >
                   <Plus size={14} className="mr-1.5" />
-                  <span className="font-medium">Добавить подгруппу</span>
+                  <span className="font-medium">Добавить препараты</span>
                 </button>
-                <button
-                  onClick={() => openTableModal ? openTableModal(group.id) : openEditModal('table', group.id)}
-                  className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-sm shadow-sm mr-3"
-                >
-                  <Plus size={14} className="mr-1.5" />
-                  <span className="font-medium">Добавить таблицу</span>
-                </button>
-                {!group.preparations && (
-                  <button
-                    onClick={() => setShowEmptyMedicationsPlaceholder(true)}
-                    className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-                  >
-                    <Plus size={14} className="mr-1.5" />
-                    <span className="font-medium">Добавить препараты</span>
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {/* Таблицы группы, если они есть */}
-            {group.tables && group.tables.length > 0 && (
-              <div className="px-4 mb-4">
-                <div className="space-y-4">
-                  {group.tables.map((table) => (
-                    <TableComponent
-                      key={table.id}
-                      table={table}
-                      isEditorMode={isEditorMode}
-                      hideHeader={true}
-                      groupId={group.id}
-                      onDelete={() => handleDelete && handleDelete('table', table.id)}
-                      draggable={isEditorMode}
-                      onDragStart={(e) => handleTableDragStart(e, table)}
-                      onDragOver={(e) => handleTableDragOver(e, table)}
-                      onDrop={(e) => handleTableDrop(e, table)}
-                      onDragEnd={handleTableDragEnd}
-                    />
-                  ))}
-                </div>
+          {/* Таблицы группы, если они есть */}
+          {group.tables && group.tables.length > 0 && (
+            <div className="px-4 mb-4">
+              <div className="space-y-4">
+                {group.tables.map((table) => (
+                  <TableComponent
+                    key={table.id}
+                    table={table}
+                    isEditorMode={isEditorMode}
+                    hideHeader={true}
+                    groupId={group.id}
+                    onDelete={() => handleDelete && handleDelete('table', table.id)}
+                    draggable={isEditorMode}
+                    onDragStart={(e) => handleTableDragStart(e, table)}
+                    onDragOver={(e) => handleTableDragOver(e, table)}
+                    onDrop={(e) => handleTableDrop(e, table)}
+                    onDragEnd={handleTableDragEnd}
+                  />
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Препараты группы, если есть */}
-            {(group.preparations || (isEditorMode && showEmptyMedicationsPlaceholder)) && (
-              <div className="px-4">
-                <div className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
-                  {/* Блок для препаратов группы */}
-                  <div className="w-full">
-                    <div className="flex justify-between items-start">
-                      <div className="w-1/3 pr-4 min-w-0 overflow-hidden">
-                        {/* Здесь может быть заголовок или описание, если нужно */}
-                      </div>
-                      
-                      <div className="w-2-3">
-                        {group.preparations ? (
+          {/* Препараты группы, если есть */}
+          {(group.preparations || (isEditorMode && showEmptyMedicationsPlaceholder)) && (
+            <div className="px-4">
+              <div className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100">
+                {/* Блок для препаратов группы */}
+                <div className="w-full">
+                  <div className="flex justify-between items-start">
+                    <div className="w-1/3 pr-4 min-w-0 overflow-hidden">
+                      {/* Здесь может быть заголовок или описание, если нужно */}
+                    </div>
+                    
+                    <div className="w-2-3">
+                      {group.preparations ? (
+                        <div>
                           <div>
-                            <div>
-                              <div 
-                                className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
-                                dangerouslySetInnerHTML={{ 
-                                  __html: group.preparations
-                                }}
-                              />
-                            </div>
-                            {isEditorMode && (
-                              <div className="mt-2 flex justify-end">
-                                <button
-                                  onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
-                                  className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
-                                >
-                                  <Edit size={12} className="mr-1" />
-                                  Редактировать препараты
-                                </button>
-                              </div>
-                            )}
+                            <div 
+                              className="text-sm text-gray-700 formatted-preparations prep-container bg-gray-50 p-3 rounded-md"
+                              dangerouslySetInnerHTML={{ 
+                                __html: group.preparations
+                              }}
+                            />
                           </div>
-                        ) : isEditorMode && showEmptyMedicationsPlaceholder && (
-                          <div>
-                            <div>
-                              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
-                                <div className="text-sm text-gray-500">Нет данных о препаратах</div>
-                              </div>
-                            </div>
+                          {isEditorMode && (
                             <div className="mt-2 flex justify-end">
                               <button
                                 onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
@@ -326,67 +307,84 @@ const GroupComponent: React.FC<GroupComponentProps> = ({
                                 Редактировать препараты
                               </button>
                             </div>
+                          )}
+                        </div>
+                      ) : isEditorMode && showEmptyMedicationsPlaceholder && (
+                        <div>
+                          <div>
+                            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-md border border-dashed border-gray-300">
+                              <div className="text-sm text-gray-500">Нет данных о препаратах</div>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      
-                      {isEditorMode && group.preparations && (
-                        <button
-                          onClick={() => {
-                            handleDeleteMedications && handleDeleteMedications('group', group.id);
-                            setShowEmptyMedicationsPlaceholder(false);
-                          }}
-                          className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
-                          title="Удалить препараты"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      )}
-                      
-                      {isEditorMode && !group.preparations && showEmptyMedicationsPlaceholder && (
-                        <button
-                          onClick={() => {
-                            handleDeleteMedications && handleDeleteMedications('group', group.id);
-                            setShowEmptyMedicationsPlaceholder(false);
-                          }}
-                          className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
-                          title="Удалить препараты"
-                        >
-                          <Trash size={14} />
-                        </button>
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              onClick={() => onOpenEditor ? onOpenEditor('group', group.id) : openEditModal('group', group.id)}
+                              className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-all duration-200 flex items-center text-xs shadow-sm"
+                            >
+                              <Edit size={12} className="mr-1" />
+                              Редактировать препараты
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
+                    
+                    {isEditorMode && group.preparations && (
+                      <button
+                        onClick={() => {
+                          handleDeleteMedications && handleDeleteMedications('group', group.id);
+                          setShowEmptyMedicationsPlaceholder(false);
+                        }}
+                        className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
+                        title="Удалить препараты"
+                      >
+                        <Trash size={14} />
+                      </button>
+                    )}
+                    
+                    {isEditorMode && !group.preparations && showEmptyMedicationsPlaceholder && (
+                      <button
+                        onClick={() => {
+                          handleDeleteMedications && handleDeleteMedications('group', group.id);
+                          setShowEmptyMedicationsPlaceholder(false);
+                        }}
+                        className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-all duration-200 flex-shrink-0 ml-2"
+                        title="Удалить препараты"
+                      >
+                        <Trash size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
-            
-            {/* Подгруппы */}
-            {group.subgroups && group.subgroups.length > 0 ? (
-              <div className="px-4 pb-4 mt-5 subgroups-container">
-                {group.subgroups.map((subgroup) => (
-                  <SubgroupComponent
-                    key={subgroup.id}
-                    subgroup={subgroup}
-                    groupId={group.id}
-                    cycleId={cycleId}
-                    isEditorMode={isEditorMode}
-                    isEditingTitle={isEditingTitle}
-                    editingTitleValue={editingTitleValue}
-                    onStartEditingTitle={onStartEditingTitle}
-                    onFinishEditingTitle={onFinishEditingTitle}
-                    onEditingTitleChange={onEditingTitleChange}
-                    onDeleteItem={(type, id) => onDeleteItem ? onDeleteItem(type, id) : handleDelete(type, id)}
-                    onOpenEditor={(type, parentId) => onOpenEditor ? onOpenEditor(type as 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId) : openEditModal(type, parentId)}
-                    handleDeleteMedications={handleDeleteMedications}
-                    openTableModal={openTableModal}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
+            </div>
+          )}
+          
+          {/* Подгруппы */}
+          {group.subgroups && group.subgroups.length > 0 ? (
+            <div className="px-4 pb-4 mt-5 subgroups-container">
+              {group.subgroups.map((subgroup) => (
+                <SubgroupComponent
+                  key={subgroup.id}
+                  subgroup={subgroup}
+                  groupId={group.id}
+                  cycleId={cycleId}
+                  isEditorMode={isEditorMode}
+                  isEditingTitle={isEditingTitle}
+                  editingTitleValue={editingTitleValue}
+                  onStartEditingTitle={onStartEditingTitle}
+                  onFinishEditingTitle={onFinishEditingTitle}
+                  onEditingTitleChange={onEditingTitleChange}
+                  onDeleteItem={(type, id) => onDeleteItem ? onDeleteItem(type, id) : handleDelete(type, id)}
+                  onOpenEditor={(type, parentId) => onOpenEditor ? onOpenEditor(type as 'cycle' | 'group' | 'subgroup' | 'category' | 'table', parentId) : openEditModal(type, parentId)}
+                  handleDeleteMedications={handleDeleteMedications}
+                  openTableModal={openTableModal}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
-      )}
+      </div>
     </div>
   );
 };

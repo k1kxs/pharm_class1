@@ -6,8 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const DrugClassification_1 = __importDefault(require("../models/DrugClassification"));
 const auth_1 = require("../middleware/auth");
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const router = express_1.default.Router();
 // Получение данных классификации для текущего пользователя
 router.get('/', async (req, res) => {
@@ -114,38 +112,6 @@ router.post('/import', auth_1.verifyAdmin, async (req, res) => {
     catch (error) {
         console.error('Ошибка при импорте данных классификации:', error);
         res.status(500).json({ message: 'Ошибка сервера при импорте данных классификации' });
-    }
-});
-// Сохранение данных в файл data-backup.json в корне проекта
-router.post('/save-to-root-file', async (req, res) => {
-    try {
-        const { cycles } = req.body;
-        // Проверка наличия данных
-        if (!cycles || !Array.isArray(cycles)) {
-            return res.status(400).json({ message: 'Неверный формат данных' });
-        }
-        // Путь к файлу data-backup.json в корне проекта (исправленный путь)
-        const rootPath = path_1.default.resolve(__dirname, '../../..');
-        const filePath = path_1.default.join(rootPath, 'data-backup.json');
-        console.log('Сохранение данных в файл:', filePath);
-        console.log('Текущая директория:', __dirname);
-        console.log('Корневая директория проекта:', rootPath);
-        // Создаем объект с данными для сохранения
-        const dataToSave = {
-            cycles,
-            lastSaved: new Date().toISOString()
-        };
-        // Записываем данные в файл
-        fs_1.default.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2), 'utf8');
-        console.log('Данные успешно записаны в файл');
-        res.json({
-            message: 'Данные успешно сохранены в файл data-backup.json',
-            path: filePath
-        });
-    }
-    catch (error) {
-        console.error('Ошибка при сохранении данных в файл:', error);
-        res.status(500).json({ message: 'Ошибка сервера при сохранении данных в файл' });
     }
 });
 exports.default = router;

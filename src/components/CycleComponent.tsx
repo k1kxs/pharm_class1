@@ -102,6 +102,7 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       onDragOver={(e) => onDragOver(e, cycle)}
       onDrop={(e) => onDrop(e, cycle)}
       onDragEnd={onDragEnd}
+      data-cycle-id={cycle.id}
     >
       {/* Заголовок цикла */}
       <div 
@@ -182,56 +183,54 @@ const CycleComponent: React.FC<CycleComponentProps> = ({
       </div>
       
       {/* Содержимое цикла */}
-      {isExpanded && (
-        <div className="p-4 scale-in">
-          {isEditorMode && (
-            <div className="mb-4 flex justify-start">
-              <button
-                onClick={() => openEditModal('group', cycle.id)}
-                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
-              >
-                <Plus size={14} className="mr-1.5" />
-                <span className="font-medium">Добавить группу</span>
-              </button>
-            </div>
-          )}
-          
-          {cycle.groups && cycle.groups.length > 0 ? (
-            <div className="space-y-4">
-              {cycle.groups.map((group) => (
-                <GroupComponent
-                  key={group.id}
-                  group={group}
-                  cycleId={cycle.id}
-                  isEditorMode={isEditorMode}
-                  isEditingTitle={null}
-                  editingTitleValue={editingTitleValue}
-                  onStartEditingTitle={() => {}}
-                  onFinishEditingTitle={() => {}}
-                  onEditingTitleChange={() => {}}
-                  openEditModal={openEditModal}
-                  handleDelete={handleDelete}
-                  handleDeleteMedications={handleDeleteMedications}
-                  onColorPickerOpen={onColorPickerOpen}
-                  onDeleteItem={handleDelete}
-                  onOpenEditor={openEditModal}
-                  onOpenColorPicker={onColorPickerOpen}
-                  onDragStart={onGroupDragStart}
-                  onDragOver={onGroupDragOver}
-                  onDrop={onGroupDrop}
-                  onDragEnd={onGroupDragEnd}
-                  searchQuery={searchQuery}
-                  openTableModal={openTableModal}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500 italic">
-              Нет групп в этом цикле
-            </div>
-          )}
-        </div>
-      )}
+      <div className={`${isExpanded ? 'block' : 'hidden'} p-4 scale-in print:block print:!visible`}>
+        {isEditorMode && (
+          <div className="mb-4 flex justify-start print:hidden">
+            <button
+              onClick={() => openEditModal('group', cycle.id)}
+              className="px-3 py-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-all duration-200 flex items-center text-sm shadow-sm"
+            >
+              <Plus size={14} className="mr-1.5" />
+              <span className="font-medium">Добавить группу</span>
+            </button>
+          </div>
+        )}
+        
+        {cycle.groups && cycle.groups.length > 0 ? (
+          <div className="space-y-4">
+            {cycle.groups.map((group) => (
+              <GroupComponent
+                key={group.id}
+                group={group}
+                cycleId={cycle.id}
+                isEditorMode={isEditorMode}
+                isEditingTitle={null}
+                editingTitleValue={editingTitleValue}
+                onStartEditingTitle={() => {}}
+                onFinishEditingTitle={() => {}}
+                onEditingTitleChange={() => {}}
+                openEditModal={openEditModal}
+                handleDelete={handleDelete}
+                handleDeleteMedications={handleDeleteMedications}
+                onColorPickerOpen={onColorPickerOpen}
+                onDeleteItem={handleDelete}
+                onOpenEditor={openEditModal}
+                onOpenColorPicker={onColorPickerOpen}
+                onDragStart={onGroupDragStart}
+                onDragOver={onGroupDragOver}
+                onDrop={onGroupDrop}
+                onDragEnd={onGroupDragEnd}
+                searchQuery={searchQuery}
+                openTableModal={openTableModal}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-gray-500 italic">
+            Нет групп в этом цикле
+          </div>
+        )}
+      </div>
     </div>
   );
 };
