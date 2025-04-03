@@ -236,23 +236,25 @@ router.post('/generate-html', async (req, res) => {
 // Маршрут для генерации PDF с помощью Puppeteer
 router.post('/generate-pdf', async (req, res) => {
     console.log('Получен запрос на /generate-pdf');
-    let { url, debug, waitTimeout, scale, expandAll } = req.body;
+    let { url, debug, waitTimeout, scale, expandAll, format } = req.body;
     const landscape = req.body.landscape || false;
     // Запишем все полученные параметры для диагностики
     lastPdfGeneration = {
         startTime: new Date().toISOString(),
         url,
-        params: { debug, waitTimeout, scale, landscape, expandAll },
+        params: { debug, waitTimeout, scale, landscape, expandAll, format },
         status: 'started',
         contentStats: {},
         ...(lastPdfGeneration || {})
     };
     debug = debug || false;
     waitTimeout = waitTimeout || 5000;
-    scale = scale || 0.7; // Устанавливаем более реалистичный масштаб по умолчанию
+    // Параметр масштабирования принимаем из запроса или используем значение по умолчанию
+    scale = scale || 0.5;
     expandAll = expandAll || false;
+    format = format || "a4"; // По умолчанию A4
     console.log(`Генерация PDF для URL: ${url}`);
-    console.log(`Параметры: debug=${debug}, waitTimeout=${waitTimeout}, scale=${scale}, landscape=${landscape}, expandAll=${expandAll}`);
+    console.log(`Параметры: debug=${debug}, waitTimeout=${waitTimeout}, scale=${scale}, landscape=${landscape}, expandAll=${expandAll}, format=${format}`);
     try {
         // Запускаем браузер с улучшенными настройками для macOS
         const browser = await puppeteer_1.default.launch({
@@ -273,10 +275,10 @@ router.post('/generate-pdf', async (req, res) => {
         const page = await browser.newPage();
         // Увеличиваем таймаут и размер страницы для лучшей обработки
         page.setDefaultNavigationTimeout(120000); // 2 минуты
-        // Устанавливаем размер окна
+        // Устанавливаем размер окна - значительно увеличиваем для эффекта "отдаления"
         await page.setViewport({
-            width: landscape ? 1920 : 1200,
-            height: landscape ? 1080 : 1600,
+            width: landscape ? 3500 : 2400,
+            height: landscape ? 2400 : 3500,
             deviceScaleFactor: 1,
         });
         // Устанавливаем дополнительные параметры для expandAll
@@ -301,11 +303,21 @@ router.post('/generate-pdf', async (req, res) => {
         lastPdfGeneration.status = 'loading_page';
         console.log(`Загрузка страницы: ${url}`);
         // Добавляем дополнительные стили для отображения таблиц при загрузке страницы
-        await page.evaluateOnNewDocument(() => {
+        await page.evaluateOnNewDocument((scaleValue) => {
             console.log('Добавление глобальных стилей для таблиц');
-            // Создаем и добавляем стили
+            // Создаем элемент стиля
             const styleElement = document.createElement('style');
+            document.head.appendChild(styleElement);
+            // Добавляем стили для корректного отображения таблиц и других компонентов в PDF
             styleElement.textContent = `
+        /* Принудительное уменьшение всего содержимого */
+        body {
+          /* Удаляем дублирование масштабирования через CSS, т.к. масштабирование будет через параметр scale в puppeteer */
+          width: 100% !important;
+          height: 100% !important;
+          font-size: 11pt !important;
+        }
+        
         /* Глобальные стили для принудительного отображения таблиц */
         table {
           display: table !important;
@@ -316,6 +328,7 @@ router.post('/generate-pdf', async (req, res) => {
           min-height: 20px !important;
           border-collapse: collapse !important;
           border: 1px solid #ccc !important;
+          font-size: 10pt !important;
         }
         
         tr {
@@ -328,8 +341,24 @@ router.post('/generate-pdf', async (req, res) => {
           display: table-cell !important;
           visibility: visible !important;
           opacity: 1 !important;
-          padding: 8px !important;
+          padding: 3px !important;
           border: 1px solid #ddd !important;
+        }
+        
+        /* Оптимизация шрифтов */
+        body {
+          font-size: 11pt !important;
+        }
+        
+        h1 { font-size: 16pt !important; margin: 5px 0 !important; }
+        h2 { font-size: 14pt !important; margin: 4px 0 !important; }
+        h3 { font-size: 12pt !important; margin: 3px 0 !important; }
+        h4 { font-size: 11pt !important; margin: 2px 0 !important; }
+        
+        /* Уменьшаем отступы для экономии места */
+        .cycle-component, .group-component, .subgroup-component {
+          margin: 0.3em 0 !important;
+          padding: 0.3em !important;
         }
         
         /* Отключаем overflow: hidden для контейнеров с таблицами */
@@ -400,10 +429,12 @@ router.post('/generate-pdf', async (req, res) => {
           display: block !important;
           visibility: visible !important;
           opacity: 1 !important;
+          height: auto !important;
         }
         
         /* Принудительно отображаем содержимое подгрупп (которое обычно скрыто) */
-        .subgroup-component > div:nth-child(2) {
+        .subgroup-component > div:nth-child(2),
+        .subgroup-component > div.p-3 {
           display: block !important;
           visibility: visible !important;
           opacity: 1 !important;
@@ -420,12 +451,13 @@ router.post('/generate-pdf', async (req, res) => {
           visibility: visible !important;
           opacity: 1 !important;
           height: auto !important;
+          max-height: none !important;
         }
 
         /* Стили для режима печати */
         @media print {
           @page {
-            size: ${landscape ? 'landscape' : 'portrait'};
+            size: 
             margin: 1.5cm;
           }
           
@@ -435,6 +467,10 @@ router.post('/generate-pdf', async (req, res) => {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+            font-size: 9pt !important;
+            /* Удаляем дублирование масштабирования через CSS, т.к. масштабирование будет через параметр scale в puppeteer */
+            width: 100% !important;
+            height: 100% !important;
           }
           
           table, tr, td, th {
@@ -447,15 +483,22 @@ router.post('/generate-pdf', async (req, res) => {
             width: 100% !important;
             border-collapse: collapse !important;
             border: 1px solid #ccc !important;
-            margin-bottom: 10px !important;
+            margin-bottom: 8px !important;
+            font-size: 10pt !important;
           }
           
           /* Ячейки с границами */
           td, th {
             border: 1px solid #ccc !important;
-            padding: 8px !important;
+            padding: 6px !important;
             text-align: left !important;
           }
+          
+          /* Оптимизация размеров заголовков */
+          h1 { font-size: 16pt !important; margin: 5px 0 !important; }
+          h2 { font-size: 14pt !important; margin: 4px 0 !important; }
+          h3 { font-size: 12pt !important; margin: 3px 0 !important; }
+          h4 { font-size: 11pt !important; margin: 2px 0 !important; }
           
           /* Гарантируем, что все циклы и группы отображаются */
           .cycle-component, .group-component, .subgroup-component,
@@ -465,69 +508,12 @@ router.post('/generate-pdf', async (req, res) => {
             height: auto !important;
             max-height: none !important;
             overflow: visible !important;
+            margin: 0.3em 0 !important;
+            padding: 0.3em !important;
           }
         }
       `;
-            document.head.appendChild(styleElement);
-            // Функция для обнаружения и исправления таблиц
-            window.detectAndFixTables = () => {
-                console.log('Запуск функции обнаружения таблиц...');
-                // Находим все таблицы по разным селекторам
-                const tableTags = document.querySelectorAll('table');
-                const subgroupTables = document.querySelectorAll('.subgroup-component table');
-                const groupContentTables = document.querySelectorAll('.group-content table');
-                // Объединяем все найденные таблицы в массив
-                const allTables = new Set();
-                tableTags.forEach(table => allTables.add(table));
-                subgroupTables.forEach(table => allTables.add(table));
-                groupContentTables.forEach(table => allTables.add(table));
-                const tables = Array.from(allTables);
-                console.log(`Обнаружено таблиц: ${tables.length}`);
-                // Исправляем каждую таблицу
-                tables.forEach((table, index) => {
-                    // Применяем к таблице обязательные стили и атрибуты
-                    table.setAttribute('style', 'display: table !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; border-collapse: collapse !important; border: 1px solid #ccc !important;');
-                    table.setAttribute('border', '1');
-                    table.setAttribute('cellpadding', '5');
-                    table.setAttribute('cellspacing', '0');
-                    table.setAttribute('data-fixed', 'true');
-                    console.log(`Фиксация таблицы #${index + 1}`);
-                    // Проверяем родительские элементы на наличие overflow:hidden
-                    let parent = table.parentElement;
-                    while (parent) {
-                        const computedStyle = window.getComputedStyle(parent);
-                        if (computedStyle.overflow === 'hidden' || computedStyle.maxHeight !== 'none') {
-                            parent.style.overflow = 'visible';
-                            parent.style.maxHeight = 'none';
-                            parent.style.height = 'auto';
-                        }
-                        parent = parent.parentElement;
-                    }
-                    // Фиксируем строки и ячейки
-                    const rows = table.querySelectorAll('tr');
-                    console.log(`В таблице #${index + 1} найдено строк: ${rows.length}`);
-                    rows.forEach(row => {
-                        row.setAttribute('style', 'display: table-row !important; visibility: visible !important; opacity: 1 !important;');
-                        // Фиксируем ячейки
-                        const cells = row.querySelectorAll('td, th');
-                        cells.forEach(cell => {
-                            cell.setAttribute('style', 'display: table-cell !important; visibility: visible !important; opacity: 1 !important; border: 1px solid #ccc !important; padding: 8px !important;');
-                        });
-                    });
-                });
-                // Проверка видимости после исправления
-                const visibleTables = tables.filter(table => {
-                    const style = window.getComputedStyle(table);
-                    return style.display !== 'none' && style.visibility !== 'hidden';
-                });
-                console.log(`Видимых таблиц после исправления: ${visibleTables.length} из ${tables.length}`);
-                return {
-                    total: tables.length,
-                    visible: visibleTables.length,
-                    hasInvisible: visibleTables.length < tables.length
-                };
-            };
-        });
+        }, scale);
         // Загружаем страницу
         await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
         // Проверяем наличие содержимого и ждем загрузки всего контента
@@ -659,6 +645,12 @@ router.post('/generate-pdf', async (req, res) => {
                 // Специальная обработка для подгрупп - принудительное раскрытие
                 document.querySelectorAll('.subgroup-component').forEach(subgroup => {
                     if (subgroup instanceof HTMLElement) {
+                        // Принудительно устанавливаем стиль display: block для всего компонента
+                        subgroup.style.display = 'block';
+                        subgroup.style.visibility = 'visible';
+                        subgroup.style.opacity = '1';
+                        subgroup.style.height = 'auto';
+                        subgroup.style.maxHeight = 'none';
                         // Находим кнопку разворачивания подгруппы
                         const toggleButton = subgroup.querySelector('.cursor-pointer');
                         if (toggleButton instanceof HTMLElement) {
@@ -707,6 +699,8 @@ router.post('/generate-pdf', async (req, res) => {
                                     div.style.display = 'block';
                                     div.style.visibility = 'visible';
                                     div.style.opacity = '1';
+                                    div.style.height = 'auto';
+                                    div.style.maxHeight = 'none';
                                 }
                             }
                         }
@@ -830,116 +824,134 @@ router.post('/generate-pdf', async (req, res) => {
         // Сохраняем статистику в lastPdfGeneration
         lastPdfGeneration.contentStats = contentStats;
         lastPdfGeneration.status = 'generating_pdf';
-        // Проверяем наличие видимых таблиц и пробуем исправить проблему
-        if (contentStats.tables.visible === 0 && contentStats.tables.total > 0) {
-            console.warn('Таблицы найдены, но все невидимы! Пробуем исправить...');
-            // Пытаемся принудительно отобразить таблицы
-            await page.evaluate(() => {
-                document.querySelectorAll('table').forEach(table => {
-                    // Принудительно отображаем таблицу и все её элементы
-                    table.setAttribute('style', 'display: table !important; visibility: visible !important; opacity: 1 !important;');
-                    // Также отображаем все вложенные элементы
-                    table.querySelectorAll('tr').forEach(tr => {
-                        tr.setAttribute('style', 'display: table-row !important; visibility: visible !important;');
-                    });
-                    table.querySelectorAll('td, th').forEach(cell => {
-                        cell.setAttribute('style', 'display: table-cell !important; visibility: visible !important;');
-                    });
-                    // Если таблица внутри другого контейнера, проверяем его тоже
-                    let parent = table.parentElement;
-                    while (parent) {
-                        parent.setAttribute('style', parent.getAttribute('style') || '' + '; display: block !important; visibility: visible !important; opacity: 1 !important;');
-                        parent = parent.parentElement;
+        // Оптимизация страницы перед созданием PDF
+        await page.evaluate(() => {
+            console.log('Оптимизация страницы для PDF экспорта...');
+            // Скрываем все ненужные элементы управления
+            const elementsToHide = [
+                'button:not(.print-visible)',
+                '[role="button"]:not(.print-visible)',
+                '.icon-button:not(.print-visible)',
+                '.actions:not(.print-visible)',
+                '.edit-controls:not(.print-visible)',
+                'input[type="button"]:not(.print-visible)',
+                '.btn:not(.print-visible)',
+                '.search-container:not(.print-visible)'
+            ];
+            elementsToHide.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el instanceof HTMLElement) {
+                        el.style.display = 'none';
                     }
                 });
-                // Возвращаем false, если есть проблемы с таблицами
-                return document.querySelectorAll('table[style*="display: none"], table[style*="visibility: hidden"]').length === 0;
             });
-            // Даем время для применения изменений
-            await page.waitForTimeout(1000);
-            // Повторно анализируем контент
-            const updatedStats = await page.evaluate(() => {
-                const tables = document.querySelectorAll('table');
-                const visibleTables = Array.from(tables).filter(table => {
-                    const style = window.getComputedStyle(table);
-                    return style.display !== 'none' && style.visibility !== 'hidden';
+            // Гарантируем видимость всех нужных элементов
+            const elementsToShow = [
+                'table', 'tr', 'td', 'th',
+                '.cycle-component', '.group-component', '.subgroup-component',
+                '.cycle-content', '.group-content', '.subgroup-content',
+                '.medications-list', '.medication-item', '.description', '.table-component'
+            ];
+            elementsToShow.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el instanceof HTMLElement) {
+                        if (el.tagName === 'TABLE') {
+                            el.style.display = 'table';
+                            el.style.width = '100%';
+                            el.style.borderCollapse = 'collapse';
+                            el.style.border = '1px solid #ccc';
+                        }
+                        else if (el.tagName === 'TR') {
+                            el.style.display = 'table-row';
+                        }
+                        else if (el.tagName === 'TD' || el.tagName === 'TH') {
+                            el.style.display = 'table-cell';
+                            el.style.border = '1px solid #ccc';
+                            el.style.padding = '8px';
+                        }
+                        else {
+                            el.style.display = 'block';
+                        }
+                        el.style.visibility = 'visible';
+                        el.style.opacity = '1';
+                        // Устраняем переполнение
+                        if (el.style.overflow === 'hidden') {
+                            el.style.overflow = 'visible';
+                        }
+                        // Убираем ограничения по высоте
+                        if (el.style.maxHeight && el.style.maxHeight !== 'none') {
+                            el.style.maxHeight = 'none';
+                        }
+                    }
                 });
-                return {
-                    tablesCount: tables.length,
-                    visibleTablesCount: visibleTables.length
-                };
             });
-            console.log('Результаты исправления таблиц:', updatedStats);
-            lastPdfGeneration.contentStats.tablesFixed = updatedStats;
-        }
-        // Добавляем дополнительные стили прямо в страницу перед генерацией PDF
-        await page.evaluate(() => {
-            // Создаем и добавляем стили для правильного отображения в PDF
+            // Добавляем стили для корректного отображения при печати
             const printStyle = document.createElement('style');
             printStyle.textContent = `
         @media print {
-          @page {
-            margin: 2cm;
-          }
+          @page { margin: 1.5cm; }
+          
+          /* Базовые стили для печати */
           body {
             margin: 0;
             padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
+          
+          /* Стили для таблиц */
           table {
             display: table !important;
             visibility: visible !important;
             width: 100% !important;
             border-collapse: collapse !important;
+            margin-bottom: 10px !important;
           }
-          tr {
-            display: table-row !important;
-            visibility: visible !important;
-          }
-          td, th {
-            display: table-cell !important;
-            visibility: visible !important;
+          
+          tr { display: table-row !important; }
+          td, th { 
+            display: table-cell !important; 
             border: 1px solid #ccc !important;
             padding: 8px !important;
           }
+          
+          /* Избегаем разрывов внутри компонентов */
           .cycle-component, .group-component {
             page-break-inside: avoid;
-            margin-bottom: 20px !important;
+            break-inside: avoid;
           }
-          .table-container, div:has(> table) {
-            overflow: visible !important;
+          
+          /* Отключаем скрытие содержимого */
+          .cycle-content, .group-content, .subgroup-content {
+            display: block !important;
+            visibility: visible !important;
             height: auto !important;
           }
         }
       `;
             document.head.appendChild(printStyle);
-            // Еще раз фиксируем все таблицы для надежности
-            document.querySelectorAll('table').forEach(table => {
-                table.style.cssText = 'display: table !important; visibility: visible !important; width: 100% !important; border-collapse: collapse !important;';
-                // Добавляем атрибуты для гарантии отображения
-                table.setAttribute('border', '1');
-                table.setAttribute('cellpadding', '8');
-                table.setAttribute('cellspacing', '0');
-                // Обрабатываем ячейки и строки
-                table.querySelectorAll('tr').forEach(tr => {
-                    tr.style.cssText = 'display: table-row !important; visibility: visible !important;';
-                });
-                table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.cssText = 'display: table-cell !important; visibility: visible !important; border: 1px solid #ccc !important; padding: 8px !important;';
-                });
-            });
-            return document.querySelectorAll('table').length;
+            return "Страница оптимизирована для экспорта PDF";
         });
         // Даем время браузеру применить все изменения
         await page.waitForTimeout(1000);
-        // Генерация PDF с возможностью установки landscape
+        // Подробное логирование для отладки параметра scale
+        console.log(`Детальная информация о масштабе:`, {
+            scaleType: typeof scale,
+            scaleValue: scale,
+            parsedScale: parseFloat(scale),
+            isNaN: isNaN(parseFloat(scale))
+        });
+        console.log(`Создание PDF с масштабом: ${scale}, форматом: ${format}, ориентацией: ${landscape ? 'альбомная' : 'портретная'}`);
+        // Генерация PDF с применением масштаба напрямую через Puppeteer
         const pdfBuffer = await page.pdf({
-            format: "A4",
+            format: format,
             printBackground: true,
             margin: {
-                top: "2cm",
-                bottom: "2cm",
-                left: "1cm",
-                right: "1cm",
+                top: "1.5cm",
+                bottom: "1.5cm",
+                left: "1.5cm",
+                right: "1.5cm",
             },
             displayHeaderFooter: true,
             headerTemplate: `
@@ -952,7 +964,8 @@ router.post('/generate-pdf', async (req, res) => {
           <span>Страница <span class="pageNumber"></span> из <span class="totalPages"></span></span>
         </div>
       `,
-            scale: scale,
+            // Явно преобразуем в число для гарантии правильного типа
+            scale: typeof scale === 'string' ? parseFloat(scale) : scale,
             landscape: landscape,
             preferCSSPageSize: false
         });

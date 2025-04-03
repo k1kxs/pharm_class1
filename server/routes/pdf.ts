@@ -27,11 +27,44 @@ interface PdfGenerationOptions {
 }
 
 router.get('/status', (req, res) => {
+  // Проверяем установку Puppeteer
+  let puppeteerInstalled = false;
+  try {
+    const puppeteerTest = require('puppeteer');
+    puppeteerInstalled = !!puppeteerTest;
+  } catch (e) {
+    console.warn('Puppeteer не установлен или не доступен:', e);
+  }
+  
+  // Добавляем информацию о временных файлах
+  let tempFiles = [];
+  try {
+    const tempDir = path.join(__dirname, '../temp');
+    if (fs.existsSync(tempDir)) {
+      tempFiles = fs.readdirSync(tempDir)
+        .filter(file => file.endsWith('.html') || file.endsWith('.pdf') || file.endsWith('.log'))
+        .map(file => {
+          const filePath = path.join(tempDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            size: stats.size,
+            time: stats.mtime.toISOString()
+          };
+        })
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    }
+  } catch (err) {
+    console.error('Ошибка при получении списка временных файлов:', err);
+  }
+  
   res.json({
     status: 'OK',
-    lastError: lastError,
+    puppeteerInstalled,
+    lastError,
     debugInfo: {
-      lastPdfGeneration
+      lastPdfGeneration,
+      tempFiles
     }
   });
 });
@@ -266,21 +299,45 @@ router.post('/generate-pdf', async (req, res) => {
     params: { debug, waitTimeout, scale, landscape, expandAll, format },
     status: 'started',
     contentStats: {},
+    debugLog: [], // Добавляем лог отладки
     ...(lastPdfGeneration || {})
+  };
+
+  // Вспомогательная функция для добавления в лог отладки
+  const addDebugLog = (message: string, data?: any) => {
+    if (!lastPdfGeneration.debugLog) {
+      lastPdfGeneration.debugLog = [];
+    }
+    lastPdfGeneration.debugLog.push({
+      time: new Date().toISOString(),
+      message,
+      ...(data ? { data } : {})
+    });
+    
+    if (debug) {
+      console.log(`[DEBUG] ${message}`, data || '');
+    }
   };
 
   debug = debug || false;
   waitTimeout = waitTimeout || 5000;
-  scale = scale || 0.5; // Используем масштаб 0.5 (масштабирование 50%)
+  // Параметр масштабирования принимаем из запроса или используем значение по умолчанию
+  scale = scale || 0.5; 
   expandAll = expandAll || false;
-  format = format || "a3"; // По умолчанию A3 в нижнем регистре, можно переопределить в запросе
+  format = format || "a4"; // По умолчанию A4
 
   console.log(`Генерация PDF для URL: ${url}`);
   console.log(`Параметры: debug=${debug}, waitTimeout=${waitTimeout}, scale=${scale}, landscape=${landscape}, expandAll=${expandAll}, format=${format}`);
+  
+  addDebugLog('Начало генерации PDF', { url, params: { debug, waitTimeout, scale, landscape, expandAll, format } });
+
+  let browser;
+  let page;
 
   try {
     // Запускаем браузер с улучшенными настройками для macOS
-    const browser = await puppeteer.launch({
+    addDebugLog('Запуск браузера Puppeteer');
+    browser = await puppeteer.launch({
       headless: "new",
       args: [
         "--no-sandbox", 
@@ -294,23 +351,27 @@ router.post('/generate-pdf', async (req, res) => {
       ],
       defaultViewport: null
     });
+    addDebugLog('Браузер успешно запущен');
 
     // Открываем новую страницу
-    const page = await browser.newPage();
+    page = await browser.newPage();
+    addDebugLog('Новая страница создана');
     
     // Увеличиваем таймаут и размер страницы для лучшей обработки
     page.setDefaultNavigationTimeout(120000); // 2 минуты
     
     // Устанавливаем размер окна - значительно увеличиваем для эффекта "отдаления"
-    await page.setViewport({
+    const viewport = {
       width: landscape ? 3500 : 2400,
       height: landscape ? 2400 : 3500,
       deviceScaleFactor: 1,
-    });
+    };
+    await page.setViewport(viewport);
+    addDebugLog('Установлен размер окна', viewport);
 
     // Устанавливаем дополнительные параметры для expandAll
     if (expandAll) {
-      console.log("Активирован режим expandAll для полного раскрытия всех элементов");
+      addDebugLog('Активирован режим expandAll для полного раскрытия всех элементов');
       
       // Добавляем параметр expandAll к URL
       if (url.includes('?')) {
@@ -325,12 +386,28 @@ router.post('/generate-pdf', async (req, res) => {
 
     // Включаем логи для отладки
     if (debug) {
-      page.on('console', msg => console.log('Браузер:', msg.text()));
-      page.on('pageerror', error => console.error('Ошибка в браузере:', error.message));
+      page.on('console', msg => {
+        const logMessage = msg.text();
+        console.log('Браузер:', logMessage);
+        addDebugLog('Браузер лог', { message: logMessage });
+      });
+      
+      page.on('pageerror', error => {
+        const errorMessage = error.message;
+        console.error('Ошибка в браузере:', errorMessage);
+        addDebugLog('Ошибка в браузере', { error: errorMessage });
+      });
+      
+      page.on('requestfailed', request => {
+        const failedUrl = request.url();
+        const errorText = request.failure()?.errorText || 'Неизвестная ошибка';
+        addDebugLog('Неудачный запрос ресурса', { url: failedUrl, error: errorText });
+      });
     }
 
     // Обновляем статус
     lastPdfGeneration.status = 'loading_page';
+    addDebugLog('Загрузка страницы', { url });
 
     console.log(`Загрузка страницы: ${url}`);
     
@@ -344,13 +421,11 @@ router.post('/generate-pdf', async (req, res) => {
       
       // Добавляем стили для корректного отображения таблиц и других компонентов в PDF
       styleElement.textContent = `
-        /* Принудительное уменьшение всего содержимого - масштаб ${scaleValue * 100}% */
+        /* Принудительное уменьшение всего содержимого */
         body {
-          /* Убираем transform: scale, т.к. масштабирование будет через параметр scale в puppeteer */
-          /* transform: scale(${scaleValue}); */
-          transform-origin: top left;
-          width: ${Math.round(100/scaleValue)}% !important; /* 1/${scaleValue} = ${Math.round(100/scaleValue)/100} */
-          height: ${Math.round(100/scaleValue)}% !important;
+          /* Удаляем дублирование масштабирования через CSS, т.к. масштабирование будет через параметр scale в puppeteer */
+          width: 100% !important;
+          height: 100% !important;
           font-size: 11pt !important;
         }
         
@@ -381,7 +456,7 @@ router.post('/generate-pdf', async (req, res) => {
           border: 1px solid #ddd !important;
         }
         
-        /* Оптимизация шрифтов для масштаба 75% */
+        /* Оптимизация шрифтов */
         body {
           font-size: 11pt !important;
         }
@@ -493,7 +568,7 @@ router.post('/generate-pdf', async (req, res) => {
         /* Стили для режима печати */
         @media print {
           @page {
-            size: ${landscape ? 'landscape' : 'portrait'};
+            size: 
             margin: 1.5cm;
           }
           
@@ -504,11 +579,9 @@ router.post('/generate-pdf', async (req, res) => {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
             font-size: 9pt !important;
-            /* Убираем transform: scale, т.к. масштабирование будет через параметр scale в puppeteer */
-            /* transform: scale(${scaleValue}); */
-            transform-origin: top left;
-            width: ${Math.round(100/scaleValue)}% !important; /* 1/${scaleValue} = ${Math.round(100/scaleValue)/100} */
-            height: ${Math.round(100/scaleValue)}% !important;
+            /* Удаляем дублирование масштабирования через CSS, т.к. масштабирование будет через параметр scale в puppeteer */
+            width: 100% !important;
+            height: 100% !important;
           }
           
           table, tr, td, th {
@@ -919,182 +992,158 @@ router.post('/generate-pdf', async (req, res) => {
     lastPdfGeneration.contentStats = contentStats;
     lastPdfGeneration.status = 'generating_pdf';
     
-    // Дополнительный скрипт для масштабирования всего документа
-    await page.evaluate((scaleValue) => {
-      console.log('Подготовка документа к масштабированию через Puppeteer...');
+    // Оптимизация страницы перед созданием PDF
+    await page.evaluate(() => {
+      console.log('Оптимизация страницы для PDF экспорта...');
       
-      // Создаем и добавляем стиль для настройки размеров содержимого
-      const scaleStyle = document.createElement('style');
-      scaleStyle.textContent = `
-        html, body {
-          /* Убираем transform: scale, т.к. масштабирование будет через параметр scale в puppeteer */
-          /* transform: scale(${scaleValue}) !important; */
-          transform-origin: top left !important;
-          width: ${Math.round(100/scaleValue)}% !important;
-          height: ${Math.round(100/scaleValue)}% !important;
-        }
-        
-        /* Уменьшаем размеры шрифтов */
-        * {
-          font-size: 95% !important;
-        }
-        
-        /* Уменьшаем отступы везде */
-        div, section, article, header, footer, main, aside, nav {
-          padding-left: 5% !important;
-          padding-right: 5% !important; 
-          padding-top: 5% !important;
-          padding-bottom: 5% !important;
-          margin-left: 5% !important;
-          margin-right: 5% !important;
-          margin-top: 5% !important;
-          margin-bottom: 5% !important;
-        }
-      `;
-      document.head.appendChild(scaleStyle);
+      // Скрываем все ненужные элементы управления
+      const elementsToHide = [
+        'button:not(.print-visible)', 
+        '[role="button"]:not(.print-visible)', 
+        '.icon-button:not(.print-visible)', 
+        '.actions:not(.print-visible)', 
+        '.edit-controls:not(.print-visible)',
+        'input[type="button"]:not(.print-visible)',
+        '.btn:not(.print-visible)',
+        '.search-container:not(.print-visible)'
+      ];
       
-      // Применяем стили напрямую к body (без transform: scale)
-      document.body.style.transformOrigin = 'top left';
-      document.body.style.width = `${Math.round(100/scaleValue)}%`;
-      document.body.style.height = `${Math.round(100/scaleValue)}%`;
-      
-      return "Документ подготовлен к масштабированию через Puppeteer";
-    }, scale);
-    
-    // Проверяем наличие видимых таблиц и пробуем исправить проблему
-    if (contentStats.tables.visible === 0 && contentStats.tables.total > 0) {
-      console.warn('Таблицы найдены, но все невидимы! Пробуем исправить...');
-      
-      // Пытаемся принудительно отобразить таблицы
-      await page.evaluate(() => {
-        document.querySelectorAll('table').forEach(table => {
-          // Принудительно отображаем таблицу и все её элементы
-          table.setAttribute('style', 'display: table !important; visibility: visible !important; opacity: 1 !important;');
-          
-          // Также отображаем все вложенные элементы
-          table.querySelectorAll('tr').forEach(tr => {
-            tr.setAttribute('style', 'display: table-row !important; visibility: visible !important;');
-          });
-          
-          table.querySelectorAll('td, th').forEach(cell => {
-            cell.setAttribute('style', 'display: table-cell !important; visibility: visible !important;');
-          });
-          
-          // Если таблица внутри другого контейнера, проверяем его тоже
-          let parent = table.parentElement;
-          while (parent) {
-            parent.setAttribute('style', parent.getAttribute('style') || '' + '; display: block !important; visibility: visible !important; opacity: 1 !important;');
-            parent = parent.parentElement;
+      elementsToHide.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          if(el instanceof HTMLElement) {
+            el.style.display = 'none';
           }
         });
-        
-        // Возвращаем false, если есть проблемы с таблицами
-        return document.querySelectorAll('table[style*="display: none"], table[style*="visibility: hidden"]').length === 0;
       });
       
-      // Даем время для применения изменений
-      await page.waitForTimeout(1000);
+      // Гарантируем видимость всех нужных элементов
+      const elementsToShow = [
+        'table', 'tr', 'td', 'th', 
+        '.cycle-component', '.group-component', '.subgroup-component',
+        '.cycle-content', '.group-content', '.subgroup-content',
+        '.medications-list', '.medication-item', '.description', '.table-component'
+      ];
       
-      // Повторно анализируем контент
-      const updatedStats = await page.evaluate(() => {
-        const tables = document.querySelectorAll('table');
-        const visibleTables = Array.from(tables).filter(table => {
-          const style = window.getComputedStyle(table);
-          return style.display !== 'none' && style.visibility !== 'hidden';
+      elementsToShow.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          if(el instanceof HTMLElement) {
+            if(el.tagName === 'TABLE') {
+              el.style.display = 'table';
+              el.style.width = '100%';
+              el.style.borderCollapse = 'collapse';
+              el.style.border = '1px solid #ccc';
+            } 
+            else if(el.tagName === 'TR') {
+              el.style.display = 'table-row';
+            } 
+            else if(el.tagName === 'TD' || el.tagName === 'TH') {
+              el.style.display = 'table-cell';
+              el.style.border = '1px solid #ccc';
+              el.style.padding = '8px';
+            } 
+            else {
+              el.style.display = 'block';
+            }
+            
+            el.style.visibility = 'visible';
+            el.style.opacity = '1';
+            
+            // Устраняем переполнение
+            if(el.style.overflow === 'hidden') {
+              el.style.overflow = 'visible';
+            }
+            
+            // Убираем ограничения по высоте
+            if(el.style.maxHeight && el.style.maxHeight !== 'none') {
+              el.style.maxHeight = 'none';
+            }
+          }
         });
-        return {
-          tablesCount: tables.length,
-          visibleTablesCount: visibleTables.length
-        };
       });
       
-      console.log('Результаты исправления таблиц:', updatedStats);
-      lastPdfGeneration.contentStats.tablesFixed = updatedStats;
-    }
-    
-    // Добавляем дополнительные стили прямо в страницу перед генерацией PDF
-    await page.evaluate((scaleValue) => {
-      // Создаем и добавляем стили для правильного отображения в PDF
+      // Добавляем стили для корректного отображения при печати
       const printStyle = document.createElement('style');
       printStyle.textContent = `
         @media print {
-          @page {
-            margin: 2cm;
-          }
+          @page { margin: 1.5cm; }
+          
+          /* Базовые стили для печати */
           body {
             margin: 0;
             padding: 0;
-            /* Убираем transform: scale, т.к. масштабирование будет через параметр scale в puppeteer */
-            /* transform: scale(${scaleValue}) !important; */
-            transform-origin: top left !important;
-            width: ${Math.round(100/scaleValue)}% !important;
-            height: ${Math.round(100/scaleValue)}% !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
+          
+          /* Стили для таблиц */
           table {
             display: table !important;
             visibility: visible !important;
             width: 100% !important;
             border-collapse: collapse !important;
+            margin-bottom: 10px !important;
           }
-          tr {
-            display: table-row !important;
-            visibility: visible !important;
-          }
-          td, th {
-            display: table-cell !important;
-            visibility: visible !important;
+          
+          tr { display: table-row !important; }
+          td, th { 
+            display: table-cell !important; 
             border: 1px solid #ccc !important;
             padding: 8px !important;
           }
+          
+          /* Избегаем разрывов внутри компонентов */
           .cycle-component, .group-component {
             page-break-inside: avoid;
-            margin-bottom: 20px !important;
+            break-inside: avoid;
           }
-          .table-container, div:has(> table) {
-            overflow: visible !important;
+          
+          /* Отключаем скрытие содержимого */
+          .cycle-content, .group-content, .subgroup-content {
+            display: block !important;
+            visibility: visible !important;
             height: auto !important;
           }
         }
       `;
       document.head.appendChild(printStyle);
       
-      // Еще раз фиксируем все таблицы для надежности
-      document.querySelectorAll('table').forEach(table => {
-        (table as HTMLElement).style.cssText = 'display: table !important; visibility: visible !important; width: 100% !important; border-collapse: collapse !important;';
-        
-        // Добавляем атрибуты для гарантии отображения
-        table.setAttribute('border', '1');
-        table.setAttribute('cellpadding', '8');
-        table.setAttribute('cellspacing', '0');
-        
-        // Обрабатываем ячейки и строки
-        table.querySelectorAll('tr').forEach(tr => {
-          (tr as HTMLElement).style.cssText = 'display: table-row !important; visibility: visible !important;';
-        });
-        
-        table.querySelectorAll('td, th').forEach(cell => {
-          (cell as HTMLElement).style.cssText = 'display: table-cell !important; visibility: visible !important; border: 1px solid #ccc !important; padding: 8px !important;';
-        });
-      });
-      
-      return document.querySelectorAll('table').length;
-    }, scale);
+      return "Страница оптимизирована для экспорта PDF";
+    });
     
     // Даем время браузеру применить все изменения
     await page.waitForTimeout(1000);
     
-    // Логируем окончательное значение масштаба перед созданием PDF
-    console.log(`Окончательный масштаб для создания PDF: ${scale}`);
+    // Подробное логирование для отладки параметра scale
+    console.log(`Детальная информация о масштабе:`, {
+      scaleType: typeof scale,
+      scaleValue: scale,
+      parsedScale: parseFloat(scale as any),
+      isNaN: isNaN(parseFloat(scale as any))
+    });
+
+    console.log(`Создание PDF с масштабом: ${scale}, форматом: ${format}, ориентацией: ${landscape ? 'альбомная' : 'портретная'}`);
     
-    // Генерация PDF с большим форматом бумаги (A3 вместо A4)
+    // Добавляем лог перед созданием PDF
+    addDebugLog('Начало создания PDF файла', { 
+      scale, 
+      format, 
+      landscape, 
+      dimensions: {
+        width: page.viewport()?.width,
+        height: page.viewport()?.height
+      }
+    });
+    
+    // Генерация PDF с применением масштаба напрямую через Puppeteer
     const pdfBuffer = await page.pdf({
       format: format as PaperFormat,
       printBackground: true,
       margin: {
-        top: "1cm",
-        bottom: "1cm",
-        left: "1cm",
-        right: "1cm",
+        top: "1.5cm",
+        bottom: "1.5cm",
+        left: "1.5cm",
+        right: "1.5cm",
       },
       displayHeaderFooter: true,
       headerTemplate: `
@@ -1107,7 +1156,8 @@ router.post('/generate-pdf', async (req, res) => {
           <span>Страница <span class="pageNumber"></span> из <span class="totalPages"></span></span>
         </div>
       `,
-      scale: scale,
+      // Явно преобразуем в число для гарантии правильного типа
+      scale: typeof scale === 'string' ? parseFloat(scale) : scale, 
       landscape: landscape,
       preferCSSPageSize: false
     });
@@ -1160,6 +1210,76 @@ router.post('/generate-pdf', async (req, res) => {
       details: err.message || 'Неизвестная ошибка'
     });
   }
+});
+
+// Добавим улучшенный обработчик ошибок
+const handleError = (err: any, message: string): { error: string, details?: string, stack?: string } => {
+  console.error(`${message}:`, err);
+  
+  // Сохраняем ошибку для статуса
+  lastError = {
+    time: new Date().toISOString(),
+    message: message,
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined
+  };
+  
+  // Если есть последняя генерация PDF, обновляем её статус
+  if (lastPdfGeneration) {
+    lastPdfGeneration.status = 'error';
+    lastPdfGeneration.error = lastError;
+    lastPdfGeneration.endTime = new Date().toISOString();
+  }
+  
+  return {
+    error: message,
+    details: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined
+  };
+};
+
+// Маршрут для получения детальной отладочной информации
+router.get('/debug-info', (req, res) => {
+  console.log('Получен запрос на /debug-info');
+  
+  // Формируем отладочную информацию
+  const debugInfo = {
+    lastPdfGeneration,
+    lastError,
+    serverInfo: {
+      platform: process.platform,
+      nodeVersion: process.version,
+      memory: process.memoryUsage(),
+      uptime: process.uptime()
+    },
+    tempFiles: []
+  };
+  
+  // Добавляем информацию о временных файлах, если они есть
+  try {
+    const tempDir = path.join(__dirname, '../temp');
+    if (fs.existsSync(tempDir)) {
+      const files = fs.readdirSync(tempDir)
+        .filter(file => file.endsWith('.html') || file.endsWith('.pdf') || file.endsWith('.log'))
+        .map(file => {
+          const filePath = path.join(tempDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            size: stats.size,
+            time: stats.mtime.toISOString()
+          };
+        })
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        
+      debugInfo.tempFiles = files;
+    }
+  } catch (err) {
+    console.error('Ошибка при получении списка временных файлов:', err);
+    debugInfo.tempFilesError = err instanceof Error ? err.message : String(err);
+  }
+  
+  res.json(debugInfo);
 });
 
 export default router; 

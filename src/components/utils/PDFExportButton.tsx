@@ -12,6 +12,17 @@ interface ErrorResponse {
   stack?: string;
 }
 
+// Интерфейс для параметров экспорта PDF
+interface PdfExportParams {
+  url?: string;
+  debug?: boolean;
+  waitTimeout?: number;
+  scale?: number;
+  format?: string;
+  landscape?: boolean;
+  expandAll?: boolean;
+}
+
 const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +30,33 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isLoadingDebugInfo, setIsLoadingDebugInfo] = useState(false);
   const [showPdfTester, setShowPdfTester] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<'low' | 'medium' | 'high'>('medium');
+  const [detailedDebugInfo, setDetailedDebugInfo] = useState<any>(null);
   
   // Функция для проверки статуса сервера
   const checkServerStatus = async () => {
     try {
       console.log('Проверка статуса PDF сервера...');
-      const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/status`, {
-        timeout: 5000 // 5 секунд таймаут
-      });
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/status`, 
+        {
+          timeout: 10000, // Увеличиваем таймаут до 10 секунд
+          headers: { 'Cache-Control': 'no-cache' } // Отключаем кеширование
+        }
+      );
       console.log('Статус сервера:', response.data);
       return true;
     } catch (err) {
       console.error('Ошибка при проверке статуса сервера:', err);
+      if (axios.isAxiosError(err)) {
+        console.error('Детали ошибки Axios:', {
+          url: err.config?.url,
+          method: err.config?.method,
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data
+        });
+      }
       return false;
     }
   };
@@ -250,14 +276,6 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
         .medications-list {
           margin: 0.5em 0;
           padding-left: 1.5em;
-        }
-        
-        /* Стили для блоков с описанием */
-        .description {
-          margin: 0.5em 0;
-          padding: 0.5em;
-          background-color: #f9fafb;
-          border-radius: 0.25em;
         }
       }
     `;
@@ -812,7 +830,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
   };
   
   // Новая функция для серверного экспорта PDF через Puppeteer
-  const serverPdfExport = async () => {
+  const serverPdfExport = async (customParams: PdfExportParams = {}) => {
     try {
       console.log('Запуск серверного экспорта PDF через Puppeteer');
       
@@ -869,35 +887,60 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
         console.warn('Не удалось создать индикатор загрузки', e);
       }
       
+      // Проверяем доступность сервера непосредственно перед отправкой запроса
+      const serverUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}`;
+      try {
+        console.log(`Проверка доступности сервера ${serverUrl}...`);
+        const statusResponse = await axios.get(`${serverUrl}/api/pdf/status`, { 
+          timeout: 5000,
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        console.log('Статус сервера перед экспортом:', statusResponse.data);
+      } catch (statusError) {
+        console.error('Ошибка при проверке статуса сервера:', statusError);
+        throw new Error('Сервер PDF недоступен. Убедитесь, что сервер запущен и работает на порту 5001.');
+      }
+      
       // Отправляем запрос на серверный API с повышенным таймаутом
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 минуты таймаут
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 минуты таймаут
       
       try {
         console.log('Отправка запроса на генерацию PDF:', printUrl);
+        
+        // Объединяем параметры по умолчанию с пользовательскими
+        const requestParams = { 
+          url: printUrl,
+          debug: customParams.debug || false,
+          waitTimeout: customParams.waitTimeout || 10000,
+          scale: customParams.scale || 0.375, // Уменьшено в 2 раза с 0.75
+          format: customParams.format || "a4",
+          landscape: customParams.landscape || false
+        };
+        
+        console.log('Параметры запроса:', requestParams);
+        
         const response = await axios({
           method: 'POST',
-          url: `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/generate-pdf`,
-          data: { 
-            url: printUrl,
-            debug: true,
-            waitTimeout: 10000,  // Увеличиваем время ожидания до 10 секунд
-            scale: 0.5,         // Используем масштаб 0.5 (масштабирование 50%)
-            format: "A3"         // Используем формат A3 вместо A4
-          },
+          url: `${serverUrl}/api/pdf/generate-pdf`,
+          data: requestParams,
           responseType: 'blob', // Важно для получения бинарных данных
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           },
           timeout: 180000, // 3 минуты таймаут
           signal: controller.signal,
+          maxContentLength: 50 * 1024 * 1024, // 50MB максимальный размер ответа
+          maxBodyLength: 50 * 1024 * 1024, // 50MB максимальный размер тела запроса
         });
         
         clearTimeout(timeoutId);
         
         // Проверяем успешность запроса
         if (response.status !== 200) {
-          throw new Error(`Ошибка сервера: ${response.status}`);
+          throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
         }
         
         // Получаем данные PDF
@@ -926,25 +969,52 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
         
         console.log('PDF успешно создан и скачан');
         return true;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        console.error('Ошибка при серверном экспорте PDF:', error);
+        
+        // Если это ошибка прерывания запроса пользователем, то показываем соответствующее сообщение
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new Error('Экспорт PDF был отменен из-за длительного ожидания (более 3 минут)');
+        }
+        
+        // Детальный анализ ошибок Axios
+        if (axios.isAxiosError(error)) {
+          console.error('Детали ошибки Axios:', {
+            config: error.config,
+            code: error.code,
+            message: error.message,
+            response: error.response?.data
+          });
+          
+          // Проверка типа ошибки
+          if (error.code === 'ECONNABORTED') {
+            throw new Error('Время ожидания ответа от сервера истекло. Возможно, генерация PDF занимает слишком много времени.');
+          } else if (error.code === 'ERR_NETWORK' || !error.response) {
+            throw new Error('Не удалось подключиться к серверу PDF. Проверьте, запущен ли сервер на порту 5001.');
+          } else if (error.response?.status === 413) {
+            throw new Error('PDF слишком большой. Попробуйте уменьшить масштаб или экспортировать меньший раздел.');
+          } else if (error.response?.status >= 400 && error.response?.status < 500) {
+            throw new Error(`Ошибка клиента: ${error.response.status} ${error.response.statusText}`);
+          } else if (error.response?.status >= 500) {
+            throw new Error(`Ошибка сервера: ${error.response.status} ${error.response.statusText}`);
+          }
+        }
+        
+        // Если не удалось определить конкретную ошибку
+        throw error;
       } finally {
         // Удаляем индикатор загрузки
         if (loadingIndicator && loadingIndicator.parentNode) {
           loadingIndicator.parentNode.removeChild(loadingIndicator);
         }
-        
-        clearTimeout(timeoutId);
       }
     } catch (error) {
       console.error('Ошибка при серверном экспорте PDF:', error);
-      // Если это ошибка прерывания запроса пользователем, то показываем соответствующее сообщение
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error('Экспорт PDF был отменен из-за длительного ожидания');
-      }
-      // Если это ошибка сети, добавляем информативное сообщение
-      if (axios.isAxiosError(error) && !error.response) {
-        throw new Error('Не удалось подключиться к серверу PDF. Проверьте, запущен ли сервер.');
-      }
-      throw error; // Пробрасываем ошибку для обработки в handleExport
+      
+      // Проброс ошибки для обработки в вызывающем коде
+      throw error instanceof Error ? error : new Error(String(error));
     }
   };
   
@@ -958,6 +1028,22 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
     } catch (err) {
       console.error('Ошибка при получении отладочной информации:', err);
       setError(`Не удалось получить отладочную информацию: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
+      return null;
+    } finally {
+      setIsLoadingDebugInfo(false);
+    }
+  };
+  
+  // Функция для получения расширенной отладочной информации
+  const fetchDetailedDebugInfo = async () => {
+    setIsLoadingDebugInfo(true);
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/debug-info`);
+      setDetailedDebugInfo(response.data);
+      return response.data;
+    } catch (err) {
+      console.error('Ошибка при получении расширенной отладочной информации:', err);
+      setError(`Не удалось получить расширенную отладочную информацию: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
       return null;
     } finally {
       setIsLoadingDebugInfo(false);
@@ -988,17 +1074,44 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       // Получаем URL для печати
       const printUrl = `${window.location.origin}${window.location.pathname}?print=true`;
       
+      // Настройки качества PDF
+      let qualitySettings = {
+        scale: 0.75,
+        waitTimeout: 10000
+      };
+      
+      // Применяем настройки в зависимости от выбранного качества
+      switch (selectedQuality) {
+        case 'low':
+          qualitySettings.scale = 0.25;  // Уменьшено в 2 раза с 0.5
+          qualitySettings.waitTimeout = 5000;
+          break;
+        case 'medium':
+          qualitySettings.scale = 0.375;  // Уменьшено в 2 раза с 0.75
+          qualitySettings.waitTimeout = 10000;
+          break;
+        case 'high':
+          qualitySettings.scale = 0.5;  // Уменьшено в 2 раза с 1.0
+          qualitySettings.waitTimeout = 15000;
+          break;
+      }
+      
+      // Используем настройки качества для экспорта PDF
+      const debugParams: PdfExportParams = {
+        url: printUrl,
+        debug: true,
+        waitTimeout: qualitySettings.waitTimeout,
+        scale: qualitySettings.scale,
+        format: "a4"
+      };
+      
+      console.log('Запуск отладочного экспорта с параметрами:', debugParams);
+      
       // Отправляем запрос на API с включенным режимом отладки
       const response = await axios({
         method: 'POST',
         url: `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/generate-pdf`,
-        data: { 
-          url: printUrl,
-          debug: true,
-          waitTimeout: 10000,  // Увеличиваем время ожидания до 10 секунд
-          scale: 0.5,         // Используем масштаб 0.5 (масштабирование 50%)
-          format: "A3"         // Используем формат A3 вместо A4
-        },
+        data: debugParams,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1008,10 +1121,29 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       // Обновляем отладочную информацию после генерации
       await fetchDebugInfo();
       
-      setError('Экспорт в режиме отладки запущен. Проверьте окно браузера, которое должно открыться на сервере.');
+      setError('Экспорт в режиме отладки выполнен успешно. Проверьте отладочную информацию.');
     } catch (err) {
       console.error('Ошибка при отладочном экспорте:', err);
-      setError(`Ошибка при отладке: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
+      let errorMessage = 'Неизвестная ошибка';
+      
+      if (axios.isAxiosError(err)) {
+        // Более детальная обработка ошибок Axios
+        if (err.code === 'ECONNABORTED') {
+          errorMessage = 'Превышено время ожидания ответа от сервера. Попробуйте уменьшить качество PDF.';
+        } else if (err.code === 'ERR_NETWORK') {
+          errorMessage = 'Не удалось подключиться к серверу PDF. Проверьте, запущен ли сервер на порту 5001.';
+        } else if (err.response) {
+          errorMessage = `Ошибка сервера (${err.response.status}): ${
+            err.response.data?.error || err.response.statusText || 'Неизвестная ошибка сервера'
+          }`;
+        } else {
+          errorMessage = `Ошибка запроса: ${err.message}`;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(`Ошибка при отладке: ${errorMessage}`);
     } finally {
       setIsExporting(false);
     }
@@ -1184,8 +1316,17 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       console.log('Сервер PDF доступен, начинаем экспорт...');
       
       try {
-        // Пытаемся выполнить серверный экспорт
-        await serverPdfExport();
+        // Пытаемся выполнить серверный экспорт с настройками по умолчанию
+        // Создаем объект с параметрами по умолчанию
+        const defaultParams: PdfExportParams = {
+          scale: 0.375, // Уменьшено в 2 раза с 0.75
+          waitTimeout: 10000,
+          format: "a4",
+          landscape: false,
+          debug: false
+        };
+        
+        await serverPdfExport(defaultParams);
       } catch (err) {
         console.warn('Серверный экспорт PDF не удался, используем клиентский метод', err);
         // Если серверный метод не сработал, используем клиентский
@@ -1224,7 +1365,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
   
   // Дополнительный компонент для тестирования различных параметров PDF
   const PDFGenerationTester: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [params, setParams] = useState({
+    const [params, setParams] = useState<PdfExportParams>({
       waitTimeout: 5000,
       scale: 0.75,
       debug: false,
@@ -1244,50 +1385,96 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
     const startTest = async () => {
       setIsRunning(true);
       
+      // Объявляем переменную originalCreateElement за пределами блока try
+      const originalCreateElement = document.createElement;
+      
       try {
-        // Используем URL в режиме печати вместо обычного URL
+        // Используем функцию serverPdfExport с текущими параметрами
+        console.log('Запуск тестирования с параметрами:', params);
+        
+        // Получаем URL для печати
         const printUrl = `${window.location.origin}${window.location.pathname}?print=true`;
-        console.log('Используем URL для печати:', printUrl);
         
-        // Используем API с портом 5001 вместо 5000
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+        // Проверяем доступность сервера перед запуском экспорта
+        try {
+          console.log('Проверка доступности сервера PDF...');
+          const isAvailable = await checkServerStatus();
+          if (!isAvailable) {
+            throw new Error('Сервер PDF недоступен. Проверьте, запущен ли сервер на порту 5001.');
+          }
+          console.log('Сервер PDF доступен, продолжаем тестирование...');
+        } catch (error) {
+          console.error('Ошибка при проверке сервера:', error);
+          throw new Error('Не удалось подключиться к серверу PDF. Проверьте, запущен ли сервер на порту 5001.');
+        }
         
-        console.log(`Отправка запроса на API: ${apiUrl}/pdf/generate-pdf`);
-        
-        // Отправляем запрос на генерацию PDF с текущими параметрами
+        // Замеряем время выполнения
         const startTime = new Date().getTime();
-        const response = await axios.post(`${apiUrl}/pdf/generate-pdf`, {
-          url: printUrl, // Используем URL с параметром print=true
-          ...params
-        }, {
-          responseType: 'blob'
-        });
-        const endTime = new Date().getTime();
         
-        // Создаем blob и URL для просмотра PDF
-        const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-        const pdfUrl = URL.createObjectURL(pdfBlob);
+        // Используем существующую функцию serverPdfExport
+        // Создаем временный обработчик для сохранения результата теста
+        document.createElement = function(tagName: string) {
+          const element = originalCreateElement.call(document, tagName);
+          if (tagName.toLowerCase() === 'a' && element instanceof HTMLAnchorElement) {
+            // Переопределяем клик, чтобы сохранить результат вместо скачивания
+            const originalClick = element.click;
+            element.click = async function() {
+              try {
+                // Сохраняем результат теста вместо скачивания
+                const endTime = new Date().getTime();
+                
+                // Получаем blob из URL
+                const resp = await fetch(this.href);
+                const pdfBlob = await resp.blob();
+                
+                // Получаем размер PDF в KB
+                const pdfSize = Math.round(pdfBlob.size / 1024);
+                
+                // Получаем статус сервера для отладочной информации
+                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+                const statusResponse = await axios.get(`${apiUrl}/pdf/status`);
+                const debugInfo = statusResponse.data.debugInfo || {};
+                
+                // Сохраняем результат теста
+                setResults(prev => [...prev, {
+                  id: Date.now(),
+                  params: { ...params },
+                  pdfUrl: this.href,
+                  pdfSize,
+                  processingTime: endTime - startTime,
+                  serverInfo: debugInfo.lastPdfGeneration || {}
+                }]);
+                
+                // Не вызываем оригинальный click, чтобы предотвратить скачивание
+              } catch (error) {
+                console.error('Ошибка при сохранении результата теста:', error);
+              } finally {
+                // Восстанавливаем оригинальную функцию
+                document.createElement = originalCreateElement;
+              }
+            };
+          }
+          return element;
+        };
         
-        // Получаем размер PDF в KB
-        const pdfSize = Math.round(pdfBlob.size / 1024);
+        // Выполняем экспорт через нашу существующую функцию
+        try {
+          console.log('Запуск серверного экспорта PDF с параметрами:', params);
+          await serverPdfExport(params);
+          console.log('Серверный экспорт PDF успешно завершен');
+        } catch (error) {
+          console.error('Ошибка при серверном экспорте PDF:', error);
+          throw error; // Пробрасываем ошибку для отображения в интерфейсе
+        }
         
-        // Получаем статус сервера для отладочной информации
-        const statusResponse = await axios.get(`${apiUrl}/pdf/status`);
-        const debugInfo = statusResponse.data.debugInfo || {};
-        
-        // Сохраняем результат теста
-        setResults(prev => [...prev, {
-          id: Date.now(),
-          params: { ...params },
-          pdfUrl,
-          pdfSize,
-          processingTime: endTime - startTime,
-          serverInfo: debugInfo.lastPdfGeneration || {}
-        }]);
-        
+        // Восстанавливаем оригинальную функцию
+        document.createElement = originalCreateElement;
       } catch (error) {
         console.error('Ошибка при тестировании PDF:', error);
-        alert(`Ошибка при тестировании PDF: ${error}`);
+        alert(`Ошибка при тестировании PDF: ${error instanceof Error ? error.message : String(error)}`);
+        
+        // Восстанавливаем оригинальную функцию
+        document.createElement = originalCreateElement;
       } finally {
         setIsRunning(false);
       }
@@ -1449,6 +1636,12 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
     );
   };
   
+  // Функция для просмотра HTML-версии перед экспортом
+  const viewHtmlBeforeExport = () => {
+    const printUrl = `${window.location.origin}${window.location.pathname}?print=true`;
+    window.open(printUrl, '_blank');
+  };
+  
   // Рендер отладочной панели
   const renderDebugPanel = () => {
     if (!showDebugPanel) return null;
@@ -1461,6 +1654,36 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
             <button onClick={() => setShowDebugPanel(false)} className="text-gray-500 hover:text-gray-800">
               &times;
             </button>
+          </div>
+          
+          <div className="mb-4">
+            <div className="font-medium mb-2">Качество экспорта:</div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setSelectedQuality('low')}
+                className={`px-3 py-1 rounded-lg border ${selectedQuality === 'low' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-800 border-gray-300'}`}
+              >
+                Низкое (быстрее)
+              </button>
+              <button 
+                onClick={() => setSelectedQuality('medium')}
+                className={`px-3 py-1 rounded-lg border ${selectedQuality === 'medium' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-800 border-gray-300'}`}
+              >
+                Среднее
+              </button>
+              <button 
+                onClick={() => setSelectedQuality('high')}
+                className={`px-3 py-1 rounded-lg border ${selectedQuality === 'high' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-800 border-gray-300'}`}
+              >
+                Высокое (медленнее)
+              </button>
+            </div>
           </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
@@ -1481,6 +1704,14 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
             </button>
             
             <button 
+              onClick={fetchDetailedDebugInfo}
+              disabled={isLoadingDebugInfo}
+              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800"
+            >
+              Расширенная отладка
+            </button>
+            
+            <button 
               onClick={checkClientRendering}
               className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
             >
@@ -1488,10 +1719,10 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
             </button>
             
             <button 
-              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?print=true`, '_blank')}
+              onClick={viewHtmlBeforeExport}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
-              Открыть в режиме печати
+              Просмотр HTML для печати
             </button>
             
             <button 
@@ -1502,51 +1733,74 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
             </button>
           </div>
           
-          {debugInfo ? (
+          {debugInfo || detailedDebugInfo ? (
             <div className="space-y-4">
               <div className="p-4 border rounded-lg">
                 <h3 className="font-bold mb-2">Статус сервера</h3>
-                <div><span className="font-medium">Статус:</span> {debugInfo.status}</div>
-                <div><span className="font-medium">Puppeteer установлен:</span> {debugInfo.puppeteerInstalled ? 'Да' : 'Нет'}</div>
-                {debugInfo.lastError && (
-                  <div className="text-red-500"><span className="font-medium">Последняя ошибка:</span> {debugInfo.lastError}</div>
+                <div><span className="font-medium">Статус:</span> {(debugInfo || detailedDebugInfo).status}</div>
+                <div><span className="font-medium">Puppeteer установлен:</span> {(debugInfo || detailedDebugInfo).puppeteerInstalled ? 'Да' : 'Нет'}</div>
+                {(debugInfo || detailedDebugInfo).lastError && (
+                  <div className="text-red-500"><span className="font-medium">Последняя ошибка:</span> {(debugInfo || detailedDebugInfo).lastError.error || (debugInfo || detailedDebugInfo).lastError}</div>
                 )}
               </div>
               
-              {debugInfo.debugInfo?.lastPdfGeneration && (
+              {/* Показываем расширенную информацию о сервере, если она доступна */}
+              {detailedDebugInfo?.serverInfo && (
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-bold mb-2">Последняя генерация PDF</h3>
-                  <div><span className="font-medium">Время:</span> {new Date(debugInfo.debugInfo.lastPdfGeneration.timestamp).toLocaleString()}</div>
-                  <div><span className="font-medium">URL:</span> {debugInfo.debugInfo.lastPdfGeneration.url}</div>
-                  
-                  {debugInfo.debugInfo.lastPdfGeneration.dimensions && (
-                    <div className="mt-2">
-                      <div className="font-medium">Размеры страницы:</div>
-                      <div className="pl-4">
-                        <div>Ширина: {debugInfo.debugInfo.lastPdfGeneration.dimensions.width}px</div>
-                        <div>Высота: {debugInfo.debugInfo.lastPdfGeneration.dimensions.height}px</div>
-                        <div>Циклов: {debugInfo.debugInfo.lastPdfGeneration.dimensions.cyclesCount}</div>
-                        <div>Групп: {debugInfo.debugInfo.lastPdfGeneration.dimensions.groupsCount}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {debugInfo.debugInfo.lastPdfGeneration.contentStats && (
-                    <div className="mt-2">
-                      <div className="font-medium">Статистика контента:</div>
-                      <div className="pl-4">
-                        <div>Высота тела: {debugInfo.debugInfo.lastPdfGeneration.contentStats.bodyHeight}px</div>
-                        <div>Элементов всего: {debugInfo.debugInfo.lastPdfGeneration.contentStats.elementsCount}</div>
-                        <div>Циклов: {debugInfo.debugInfo.lastPdfGeneration.contentStats.cyclesCount}</div>
-                        <div>Групп: {debugInfo.debugInfo.lastPdfGeneration.contentStats.groupsCount}</div>
-                        <div>Таблиц: {debugInfo.debugInfo.lastPdfGeneration.contentStats.tablesCount}</div>
-                      </div>
-                    </div>
-                  )}
+                  <h3 className="font-bold mb-2">Информация о сервере</h3>
+                  <div><span className="font-medium">Платформа:</span> {detailedDebugInfo.serverInfo.platform}</div>
+                  <div><span className="font-medium">Версия Node.js:</span> {detailedDebugInfo.serverInfo.nodeVersion}</div>
+                  <div><span className="font-medium">Время работы:</span> {Math.floor(detailedDebugInfo.serverInfo.uptime / 60)} минут</div>
+                  <div><span className="font-medium">Память:</span> {Math.round(detailedDebugInfo.serverInfo.memory.rss / 1024 / 1024)} MB</div>
                 </div>
               )}
               
-              {debugInfo.debugInfo?.tempFiles && debugInfo.debugInfo.tempFiles.length > 0 && (
+              {/* Показываем расширенный лог отладки, если он доступен */}
+              {detailedDebugInfo?.lastPdfGeneration?.debugLog && detailedDebugInfo.lastPdfGeneration.debugLog.length > 0 && (
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-bold mb-2">Отладочный лог последней генерации</h3>
+                  <div className="max-h-64 overflow-y-auto">
+                    {detailedDebugInfo.lastPdfGeneration.debugLog.map((log: any, idx: number) => (
+                      <div key={idx} className="text-xs mb-1 pb-1 border-b">
+                        <span className="font-medium">{new Date(log.time).toLocaleTimeString()}: </span>
+                        <span>{log.message}</span>
+                        {log.data && (
+                          <pre className="text-xs bg-gray-100 p-1 mt-1 rounded overflow-x-auto">
+                            {JSON.stringify(log.data, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {(debugInfo?.debugInfo?.lastPdfGeneration || detailedDebugInfo?.lastPdfGeneration) && (
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-bold mb-2">Статистика контента:</h3>
+                  <div className="pl-4">
+                    <div>Высота тела: {debugInfo?.debugInfo?.lastPdfGeneration?.contentStats?.bodyHeight || detailedDebugInfo?.lastPdfGeneration?.contentStats?.bodyHeight || 'N/A'}px</div>
+                    <div>Элементов всего: {debugInfo?.debugInfo?.lastPdfGeneration?.contentStats?.elementsCount || detailedDebugInfo?.lastPdfGeneration?.contentStats?.elementsCount || 'N/A'}</div>
+                    <div>Циклов: {debugInfo?.debugInfo?.lastPdfGeneration?.contentStats?.cyclesCount || detailedDebugInfo?.lastPdfGeneration?.contentStats?.cyclesCount || 'N/A'}</div>
+                    <div>Групп: {debugInfo?.debugInfo?.lastPdfGeneration?.contentStats?.groupsCount || detailedDebugInfo?.lastPdfGeneration?.contentStats?.groupsCount || 'N/A'}</div>
+                    <div>Таблиц: {debugInfo?.debugInfo?.lastPdfGeneration?.contentStats?.tablesCount || detailedDebugInfo?.lastPdfGeneration?.contentStats?.tablesCount || 'N/A'}</div>
+                  </div>
+                </div>
+              )}
+              
+              {debugInfo?.debugInfo?.lastPdfGeneration?.dimensions && (
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-bold mb-2">Размеры страницы:</h3>
+                  <div className="pl-4">
+                    <div>Ширина: {debugInfo?.debugInfo?.lastPdfGeneration?.dimensions.width || detailedDebugInfo?.lastPdfGeneration?.dimensions.width || 'N/A'}px</div>
+                    <div>Высота: {debugInfo?.debugInfo?.lastPdfGeneration?.dimensions.height || detailedDebugInfo?.lastPdfGeneration?.dimensions.height || 'N/A'}px</div>
+                    <div>Циклов: {debugInfo?.debugInfo?.lastPdfGeneration?.dimensions.cyclesCount || detailedDebugInfo?.lastPdfGeneration?.dimensions.cyclesCount || 'N/A'}</div>
+                    <div>Групп: {debugInfo?.debugInfo?.lastPdfGeneration?.dimensions.groupsCount || detailedDebugInfo?.lastPdfGeneration?.dimensions.groupsCount || 'N/A'}</div>
+                  </div>
+                </div>
+              )}
+              
+              {debugInfo?.debugInfo?.tempFiles && debugInfo.debugInfo.tempFiles.length > 0 && (
                 <div className="p-4 border rounded-lg">
                   <h3 className="font-bold mb-2">Отладочные файлы</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
