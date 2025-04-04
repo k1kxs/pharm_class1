@@ -10,10 +10,18 @@ const execAsync = promisify(exec);
 const router = express.Router();
 
 // Для отладки - сохраняем последнюю ошибку
-let lastError: string | null = null;
+let lastError: string | null | {
+  time: string;
+  message: string;
+  error: string;
+  stack: string | undefined;
+} = null;
 
 // Временная переменная для хранения информации о последней генерации PDF
 let lastPdfGeneration: any = null;
+
+// Добавляем информацию о временных файлах
+let tempFiles: Array<{name: string, size: number, time: string}> = [];
 
 // Добавим тип для параметров PDF
 interface PdfGenerationOptions {
@@ -37,11 +45,11 @@ router.get('/status', (req, res) => {
   }
   
   // Добавляем информацию о временных файлах
-  let tempFiles = [];
+  const localTempFiles: Array<{name: string, size: number, time: string}> = [];
   try {
     const tempDir = path.join(__dirname, '../temp');
     if (fs.existsSync(tempDir)) {
-      tempFiles = fs.readdirSync(tempDir)
+      const files = fs.readdirSync(tempDir)
         .filter(file => file.endsWith('.html') || file.endsWith('.pdf') || file.endsWith('.log'))
         .map(file => {
           const filePath = path.join(tempDir, file);
@@ -53,6 +61,8 @@ router.get('/status', (req, res) => {
           };
         })
         .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      
+      localTempFiles.push(...files);
     }
   } catch (err) {
     console.error('Ошибка при получении списка временных файлов:', err);
@@ -64,7 +74,7 @@ router.get('/status', (req, res) => {
     lastError,
     debugInfo: {
       lastPdfGeneration,
-      tempFiles
+      tempFiles: localTempFiles
     }
   });
 });
@@ -1243,7 +1253,18 @@ router.get('/debug-info', (req, res) => {
   console.log('Получен запрос на /debug-info');
   
   // Формируем отладочную информацию
-  const debugInfo = {
+  const debugInfo: {
+    lastPdfGeneration: any;
+    lastError: typeof lastError;
+    serverInfo: {
+      platform: NodeJS.Platform;
+      nodeVersion: string;
+      memory: NodeJS.MemoryUsage;
+      uptime: number;
+    };
+    tempFiles: Array<{name: string, size: number, time: string}>;
+    tempFilesError?: string;
+  } = {
     lastPdfGeneration,
     lastError,
     serverInfo: {
