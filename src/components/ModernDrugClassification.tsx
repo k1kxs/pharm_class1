@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Search, Download, Lock, Save, X, Plus, FileText, Table as TableIcon } from 'lucide-react';
+import { Search, Download, Lock, Save, X, Plus, FileText, Table as TableIcon, Database } from 'lucide-react';
 
 // Импортируем хук для использования контекста
 import { useDrugClassification } from './context/DrugClassificationContext';
@@ -13,10 +13,13 @@ import ColorPickerModal from './ColorPickerModal';
 import TableModal from './TableModal';
 import TableComponent from './TableComponent';
 import PDFExportButton from './utils/PDFExportButton';
+import BackupModal from './BackupModal';
 
 // Импортируем компоненты для drag-and-drop
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { backupAPI } from '../services/api';
+import { toast } from 'react-toastify';
 
 const ModernDrugClassification: React.FC = () => {
   // Используем наш новый хук для доступа к глобальному состоянию и действиям
@@ -107,6 +110,20 @@ const ModernDrugClassification: React.FC = () => {
   // Добавляем состояние для режима печати
   const [isPrintMode, setIsPrintMode] = useState(false);
   
+  // Состояние для модального окна резервных копий
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
+  
+  // Функция для быстрого создания резервной копии
+  const handleQuickBackup = async () => {
+    try {
+      await backupAPI.createBackup();
+      toast.success('Резервная копия успешно создана');
+    } catch (error) {
+      console.error('Ошибка при создании резервной копии:', error);
+      toast.error('Не удалось создать резервную копию');
+    }
+  };
+  
   // Эффект для определения режима печати (используется для PDF и печати)
   useEffect(() => {
     // Проверяем URL на наличие параметра print=true
@@ -169,6 +186,12 @@ const ModernDrugClassification: React.FC = () => {
             isOpen={tableModalOpen}
             onClose={closeTableModal}
           />
+          
+          <BackupModal
+            isOpen={backupModalOpen}
+            onClose={() => setBackupModalOpen(false)}
+            onReloadData={reloadData}
+          />
         </>
       )}
       
@@ -186,9 +209,25 @@ const ModernDrugClassification: React.FC = () => {
               </div>
               
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <PDFExportButton className="btn-sm" />
+                {!isEditorMode && <PDFExportButton className="btn-sm" />}
                 {isEditorMode ? (
                   <>
+                    <button
+                      onClick={handleQuickBackup}
+                      className="btn btn-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
+                      title="Быстрое создание резервной копии"
+                    >
+                      <Save size={14} className="mr-1.5" />
+                      Создать копию
+                    </button>
+                    <button
+                      onClick={() => setBackupModalOpen(true)}
+                      className="btn btn-sm bg-blue-100 text-blue-800 hover:bg-blue-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"
+                      title="Управление резервными копиями"
+                    >
+                      <Database size={14} className="mr-1.5" />
+                      Резервные копии
+                    </button>
                     <button
                       onClick={exitEditorMode}
                       className="btn btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-all duration-200 rounded-full shadow-sm flex items-center px-3 py-1.5"

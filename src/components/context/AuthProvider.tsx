@@ -42,29 +42,23 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Для отладки - выводим изменения в состоянии user
-  useEffect(() => {
-    console.log('Состояние user изменилось:', user);
-    console.log('isAuthenticated =', !!user);
-  }, [user]);
-
   // Проверка аутентификации при загрузке компонента
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
-      if (token && storedUser) {
-        try {
+      try {
+        // Проверяем наличие сохраненного пользователя
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedUser) {
           setUser(JSON.parse(storedUser));
-        } catch (error) {
-          console.error('Ошибка при парсинге данных пользователя:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
         }
+      } catch (error) {
+        console.error('Ошибка при проверке аутентификации:', error);
+        // При ошибке очищаем данные аутентификации
+        authAPI.logout();
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     checkAuth();
@@ -74,25 +68,16 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       const response = await authAPI.login(username, password);
-      console.log('Ответ от API login:', response); // Отладочный вывод
       
-      // Принудительно устанавливаем пользователя
-      const userToSet = {
-        id: '1',
-        username: username || 'admin',
-        email: 'admin@example.com',
-        role: 'admin'
-      };
+      // Устанавливаем пользователя из ответа
+      setUser(response.user);
       
-      console.log('Устанавливаем пользователя:', userToSet); // Отладочный вывод
-      setUser(userToSet);
-      
-      return { success: true, message: 'Успешная аутентификация' };
+      return { success: true, message: response.message };
     } catch (error: any) {
       console.error('Ошибка при входе:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Ошибка при входе'
+        message: error.message || 'Ошибка при входе'
       };
     }
   };
@@ -106,13 +91,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Функция изменения пароля
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      await authAPI.changePassword(currentPassword, newPassword);
-      return { success: true, message: 'Пароль успешно изменен' };
+      const result = await authAPI.changePassword(currentPassword, newPassword);
+      return { success: true, message: result.message };
     } catch (error: any) {
       console.error('Ошибка при изменении пароля:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Ошибка при изменении пароля'
+        message: error.message || 'Ошибка при изменении пароля'
       };
     }
   };
