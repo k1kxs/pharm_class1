@@ -29,20 +29,20 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
   // Функция для проверки статуса сервера
   const checkServerStatus = async () => {
     try {
-      console.log('Проверка статуса PDF сервера...');
+      console.log("Проверка статуса PDF сервера...");
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/status`, 
+        `${process.env.REACT_APP_API_URL || "http://localhost:5001"}/api/pdf/status`, 
         {
-          timeout: 10000, // Увеличиваем таймаут до 10 секунд
-          headers: { 'Cache-Control': 'no-cache' } // Отключаем кеширование
+          timeout: 10000,
+          headers: { "Cache-Control": "no-cache" }
         }
       );
-      console.log('Статус сервера:', response.data);
+      console.log("Статус сервера:", response.data);
       return true;
     } catch (err) {
-      console.error('Ошибка при проверке статуса сервера:', err);
+      console.error("Ошибка при проверке статуса сервера:", err);
       if (axios.isAxiosError(err)) {
-        console.error('Детали ошибки Axios:', {
+        console.error("Детали ошибки Axios:", {
           url: err.config?.url,
           method: err.config?.method,
           status: err.response?.status,
@@ -79,7 +79,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
           cssText += rules[j].cssText + '\n';
         }
       } catch (e) {
-        console.warn('Не удалось получить правила из таблицы стилей:', e);
+        console.warn("Не удалось получить правила из таблицы стилей:", e);
       }
     }
     
@@ -249,8 +249,8 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       const serverAvailable = await checkServerStatus();
       
       if (!serverAvailable) {
-        setError('Сервер PDF недоступен. Пожалуйста, обратитесь к администратору.');
-        console.error('Сервер PDF недоступен. Экспорт отменен.');
+        setError("Сервер PDF недоступен. Пожалуйста, обратитесь к администратору.");
+        console.error("Сервер PDF недоступен. Экспорт отменен.");
         setIsExporting(false);
         return;
       }
@@ -268,11 +268,11 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
         expandAll: customParams.expandAll || true,
       };
       
-      console.log('Экспорт PDF с параметрами:', params);
+      console.log("Экспорт PDF с параметрами:", params);
       
       // Отправляем запрос на генерацию PDF
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/pdf/generate`, 
+        `${process.env.REACT_APP_API_URL || "http://localhost:5001"}/api/pdf/generate`, 
         {
           url: params.url,
           options: {
@@ -296,7 +296,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       // Формируем имя файла (можно настроить)
       const date = new Date();
       const formattedDate = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
-      link.setAttribute('download', `Лекарственные_препараты_${formattedDate}.pdf`);
+      link.setAttribute("download", `Лекарственные_препараты_${formattedDate}.pdf`);
       
       // Нажимаем на ссылку для скачивания и удаляем её
       document.body.appendChild(link);
@@ -311,13 +311,13 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       }, 100);
       
     } catch (err) {
-      console.error('Ошибка при генерации PDF:', err);
+      console.error("Ошибка при генерации PDF:", err);
       
       // Обрабатываем различные типы ошибок
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<ErrorResponse>;
         
-        console.error('Детали ошибки Axios:', {
+        console.error("Детали ошибки Axios:", {
           url: axiosError.config?.url,
           method: axiosError.config?.method,
           status: axiosError.response?.status,
@@ -334,26 +334,26 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
                 try {
                   const errorText = reader.result as string;
                   const errorJson = JSON.parse(errorText);
-                  setError(`Ошибка: ${errorJson.error || 'Неизвестная ошибка'}`);
+                  setError(`Ошибка: ${errorJson.error || "Неизвестная ошибка"}`);
                 } catch (parseErr) {
-                  setError('Ошибка при генерации PDF. Попробуйте еще раз позже.');
+                  setError("Ошибка при генерации PDF. Попробуйте еще раз позже.");
                 }
               };
               reader.readAsText(axiosError.response.data);
             } else {
               // Если это не Blob, возможно это уже объект
               const errorData = axiosError.response.data as ErrorResponse;
-              setError(`Ошибка: ${errorData.error || 'Неизвестная ошибка'}`);
+              setError(`Ошибка: ${errorData.error || "Неизвестная ошибка"}`);
             }
           } catch (parseErr) {
-            console.error('Ошибка при разборе ответа:', parseErr);
-            setError('Ошибка при генерации PDF. Попробуйте еще раз позже.');
+            console.error("Ошибка при разборе ответа:", parseErr);
+            setError("Ошибка при генерации PDF. Попробуйте еще раз позже.");
           }
         } else {
           setError(`Ошибка при запросе: ${axiosError.message}`);
         }
       } else {
-        setError(`Ошибка: ${(err as Error).message || 'Неизвестная ошибка'}`);
+        setError(`Ошибка: ${(err as Error).message || "Неизвестная ошибка"}`);
       }
       
       setIsExporting(false);
@@ -369,7 +369,7 @@ const PDFExportButton: React.FC<PDFExportButtonProps> = ({ className }) => {
       // Используем серверный экспорт
       await serverPdfExport();
     } catch (err) {
-      console.error('Ошибка при экспорте PDF:', err);
+      console.error("Ошибка при экспорте PDF:", err);
       setError(`Ошибка при экспорте: ${(err as Error).message}`);
       setIsExporting(false);
     }
